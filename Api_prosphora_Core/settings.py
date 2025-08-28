@@ -33,6 +33,8 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -46,9 +48,14 @@ INSTALLED_APPS = [
 
 ]
 
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -59,6 +66,12 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'Api_prosphora_Core.urls'
 AUTH_USER_MODEL = 'Api_prosphora_App.User'
 
+
+
+CORS_EXPOSE_HEADERS = [
+    'Content-Type',
+    'Authorization'
+    ]
 
 TEMPLATES = [
     {
