@@ -1,6 +1,4 @@
 from django.db import models
-
-# Create your models here.
 import uuid
 from django.db import models
 from django.contrib.auth.models import User
@@ -8,7 +6,10 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
 
-# === Church ===
+
+
+
+# === Eglise ===
 class Church(models.Model):
     nom = models.CharField(max_length=100)
     region = models.CharField(max_length=100)
@@ -48,7 +49,10 @@ class CustomUserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = (
         ('admin', 'Admin'),
-        ('membre', 'Membre'),
+        ('gestionnaire', 'Gestionnaire'),
+        ('pasteur', 'Pasteur'),
+        ('comptable', 'Comptable'),
+        ('caissier', 'Caissier'),
     )
 
     eglise = models.ForeignKey(Church, on_delete=models.CASCADE, related_name='users')
@@ -70,6 +74,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 
+# === Groupe Offrandes ===
 class Groupe_Offrandes(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -80,6 +85,8 @@ class Groupe_Offrandes(models.Model):
     def __str__(self):
         return self.description_recette
 
+
+# === Sorte Offrande ===
 class Sorte_Offrande(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -92,6 +99,7 @@ class Sorte_Offrande(models.Model):
 
     
 
+# === Payement ===
 class Payement_Offrande(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -106,6 +114,7 @@ class Payement_Offrande(models.Model):
     annee = models.IntegerField()
 
 
+# === Ahadi ===
 class Ahadi(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -134,6 +143,7 @@ class Ahadi(models.Model):
     
 
 
+# === Etat Besoin ===
 class EtatBesoin(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -154,6 +164,7 @@ class EtatBesoin(models.Model):
 
 
 
+# === Groupe Previsions ===
 class Groupe_Previsions(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -164,6 +175,7 @@ class Groupe_Previsions(models.Model):
         return self.num_ordre
 
 
+# === Prevoir ===
 class Prevoir(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
