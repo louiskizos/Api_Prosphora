@@ -1,8 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializer import RegisterSerializer, LoginSerializer, ChurchSerializer, AbonnementSerializer
-from .models import Church, Abonnement
+from .serializer import RegisterSerializer, LoginSerializer, ChurchSerializer, AbonnementSerializer, UserSerializer 
+from .models import *
 from .permissions import IsAbonnementValide
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -12,6 +12,12 @@ from rest_framework import permissions
 
 
 class RegisterView(APIView):
+    def get(self, request):
+        user = User.objects.all()
+        serializer = RegisterSerializer(user, many=True)
+        return Response(serializer.data)
+
+
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():

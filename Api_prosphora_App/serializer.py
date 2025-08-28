@@ -29,6 +29,7 @@ class AbonnementSerializer(serializers.ModelSerializer):
         model = Abonnement
         fields = '__all__'
 
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
