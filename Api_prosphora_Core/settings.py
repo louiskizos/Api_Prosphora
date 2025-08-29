@@ -125,10 +125,23 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',  
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
 
+# settings.py
+
+# Autoriser les credentials
+CORS_ALLOW_CREDENTIALS = True
+
+# Réglage CSRF pour que le cookie soit accessible
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# Ne pas forcer HTTPS en local (en prod, ça doit être True)
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/

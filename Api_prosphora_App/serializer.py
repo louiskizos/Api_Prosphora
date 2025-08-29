@@ -1,4 +1,7 @@
 from rest_framework import serializers
+from rest_framework import serializers
+from .models import Church, Abonnement, User
+from django.contrib.auth import authenticate
 
 from .models import Payement_Offrande, Prevoir
 
@@ -15,9 +18,6 @@ class PrevoirSerializer(serializers.ModelSerializer):
         fields = ['descript_prevision', 'montant_prevus', 'annee_prevus']
 
 
-from rest_framework import serializers
-from .models import Church, Abonnement, User
-from django.contrib.auth import authenticate
 
 class ChurchSerializer(serializers.ModelSerializer):
     class Meta:

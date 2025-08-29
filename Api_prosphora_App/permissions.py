@@ -1,16 +1,19 @@
+from datetime import timedelta, datetime
 from rest_framework.permissions import BasePermission
-from datetime import datetime, timedelta
 
 class IsAbonnementValide(BasePermission):
-
     def has_permission(self, request, view):
         user = request.user
         if not user.is_authenticated:
             return False
 
-        abonnement = getattr(user.eglise, 'abonnement', None)
-        if not abonnement:
+        # Récupère le dernier abonnement lié à l'église
+        dernier_abonnement = user.eglise.abonnements.order_by('-date').first()
+        if not dernier_abonnement:
             return False
 
-        date_fin = abonnement.date + timedelta(days=abonnement.mois * 30)
+        # Calcule la date de fin d’abonnement
+        date_fin = dernier_abonnement.date + timedelta(days=dernier_abonnement.mois * 30)
+
+        # Compare avec la date d’aujourd’hui
         return datetime.now().date() <= date_fin
