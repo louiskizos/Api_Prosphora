@@ -101,7 +101,7 @@ class Church_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
     ):
-    permission_classes = [IsAuthenticated, IsAbonnementValide]
+    #permission_classes = [IsAuthenticated, IsAbonnementValide]
     
     queryset = Church.objects.all()
     serializer_class = ChurchSerializer
