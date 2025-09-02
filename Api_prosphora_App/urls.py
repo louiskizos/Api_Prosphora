@@ -5,7 +5,7 @@ from .views import *
 urlpatterns = [
     # ============= Eglise ==================
     path('', Church_Mixins.as_view(), name='churches'),
-    path('church_by_id/<int:pk>/', Abonnement_Mixins.as_view(), name='church_by_id'),
+    path('church_by_id/<int:pk>/', Church_Mixins.as_view(), name='church_by_id'),
     path('delete_update_church/<int:pk>/', Church_Mixins.as_view(), name='delete_update_church'),
     # ============= Utilisateur ====================
     path('register/', Register_Mixins.as_view(), name='register'),
