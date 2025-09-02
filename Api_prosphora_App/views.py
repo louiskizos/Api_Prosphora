@@ -116,6 +116,13 @@ class Church_Mixins(
 
         return self.list(request, *args, **kwargs)
     
+    def get_queryset(self):
+        pk = self.kwargs.get('pk')
+        if pk:
+            return Church.objects.filter(pk=pk)
+        return Church.objects.all()
+    
+
 
 
     def post(self, request, *args, **kwargs):
