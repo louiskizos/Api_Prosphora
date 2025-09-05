@@ -51,6 +51,7 @@ class Register_Mixins(
     def delete(self, request, *args, **kwargs):
 
         return self.destroy(request, *args, **kwargs)
+
 class LoginView(APIView):
     def post(self, request):
         email = request.data.get("email")
@@ -155,7 +156,7 @@ class Abonnement_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated,]
+    #permission_classes = [IsAuthenticated,]
 
 
     queryset = Abonnement.objects.all()
