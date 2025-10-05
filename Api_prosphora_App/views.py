@@ -57,6 +57,7 @@ class LoginView(APIView):
     def post(self, request):
         num_phone = request.data.get("num_phone")
         password = request.data.get("password")
+        print(f"Login attempt: num_phone={num_phone}, password={'*' * len(password) if password else None}")
 
         user = authenticate(request, num_phone=num_phone, password=password)
 
