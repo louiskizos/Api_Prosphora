@@ -3,7 +3,7 @@ from rest_framework import serializers
 from .models import Church, Abonnement, User
 from django.contrib.auth import authenticate
 
-from .models import Payement_Offrande, Prevoir
+from .models import *
 
 # Sérialiseur pour Payement_Offrande
 class PayementOffrandeSerializer(serializers.ModelSerializer):
@@ -64,3 +64,26 @@ class LoginSerializer(serializers.Serializer):
                 'abonnement_date': abonnement.date if abonnement else None,
             }
         raise serializers.ValidationError("Email ou mot de passe incorrect.")
+
+
+
+class Groupe_OffrandesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Groupe_Offrandes
+        fields = '__all__'
+
+class Sorte_OffrandeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Sorte_Offrande
+        fields = '__all__'
+
+class Groupe_PrevisionsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Groupe_Previsions
+        fields = '__all__'
+
+
+class PrevoirSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Prevoir
+        fields = '__all__'

@@ -108,8 +108,8 @@ class Payement_Offrande(models.Model):
     type_payement = models.CharField(max_length=100)
     montant = models.DecimalField(max_digits=15, decimal_places=2)
     montant_lettre = models.CharField(max_length=255)
-    type_monaie = models.CharField(max_length=100)
-    motif = models.CharField(max_length=255)
+    type_monaie = models.CharField(max_length=100, default="CDF")
+    motif = models.CharField(max_length=255,)
     date_payement = models.DateField()
     annee = models.IntegerField()
 
@@ -123,6 +123,7 @@ class Ahadi(models.Model):
     montant = models.DecimalField(max_digits=15, decimal_places=2)
     montant_lettre = models.CharField(max_length=255)
     motif = models.CharField(max_length=255)
+    type_monaie = models.CharField(max_length=100, default="CDF")
     date_ahadi = models.DateField()
     annee = models.IntegerField()
 
@@ -150,6 +151,7 @@ class EtatBesoin(models.Model):
     service = models.CharField(max_length=100)
     designation = models.CharField(max_length=255, default="Aucune désignation")
     montant = models.DecimalField(max_digits=10, decimal_places=2)
+    type_monaie = models.CharField(max_length=100, default="CDF")
     quantite = models.CharField(max_length=100)
     motif = models.TextField()
     date_etat_besoin = models.DateField(auto_now_add=True)
@@ -170,6 +172,7 @@ class Groupe_Previsions(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     num_ordre = models.CharField(max_length=100)
     description_prevision = models.CharField(max_length=100)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     
     def __str__(self):
         return self.num_ordre
@@ -183,6 +186,7 @@ class Prevoir(models.Model):
     num_compte = models.BigIntegerField()
     nom_prevision = models.TextField(max_length=50)
     montant_prevus = models.DecimalField(max_digits=15, decimal_places=2)
+    type_monaie = models.CharField(max_length=100, default="CDF")
     annee_prevus = models.IntegerField()
     def __str__(self):
         return self.nom_prevision
