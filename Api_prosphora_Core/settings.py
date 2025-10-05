@@ -169,3 +169,8 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+AUTHENTICATION_BACKENDS = [
+    'Api_prosphora_App.auth_backends.NumPhoneBackend',  
+    'django.contrib.auth.backends.ModelBackend',
+]

@@ -35,6 +35,8 @@ urlpatterns = [
     path('liste_offrande_par_groupe/<str:pk>/', Offrande_Mixins.as_view(), name='liste_offrande_par_groupe'),
     path('liste_offrande_par_eglise_et_groupe/<int:pk>/<str:grp>/', Offrande_Mixins.as_view(), name='liste_offrande_par_eglise_et_groupe'),
     path('total_offrande_par_eglise/<int:pk>/', Offrande_Mixins.as_view(), name='total_offrande_par_eglise'),
+
+
 # ============= Payement Offrande ====================
     # path('payement_offrande/', Payement_Offrande_Mixins.as_view(), name='create-payement_offrande'),
     # path('delete_payement_offrande/<str:pk>/', Payement_Offrande_Mixins.as_view(), name='delete_payement_offrande'),
