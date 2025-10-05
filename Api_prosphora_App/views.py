@@ -55,10 +55,10 @@ class Register_Mixins(
 class LoginView(APIView):
     
     def post(self, request):
-        email = request.data.get("email")
+        num_phone = request.data.get("num_phone")
         password = request.data.get("password")
 
-        user = authenticate(request, email=email, password=password)
+        user = authenticate(request, num_phone=num_phone, password=password)
 
         if user is not None:
             login(request, user)
@@ -69,7 +69,7 @@ class LoginView(APIView):
             response_data = {
                 "user_id": user.id,
                 "nom": user.nom,
-                "email": user.email,
+                "num_phone": user.num_phone,
                 "role": user.role,
                 "eglise": user.eglise.nom if user.eglise else None,
                 "abonnement_mois": dernier_abonnement.mois if dernier_abonnement else None,

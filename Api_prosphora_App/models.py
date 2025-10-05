@@ -31,19 +31,25 @@ class Abonnement(models.Model):
 
 # === User Manager ===
 class CustomUserManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
-        if not email:
-            raise ValueError("L'utilisateur doit avoir un email.")
-        email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
+
+    def create_user(self, num_phone, password=None, **extra_fields):
+        if not num_phone:
+            raise ValueError("L'utilisateur doit avoir un numéro de téléphone.")
+        user = self.model(num_phone=num_phone, **extra_fields)
         user.set_password(password)
-        user.save()
+        user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, password=None, **extra_fields):
+    def create_superuser(self, num_phone, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        return self.create_user(email, password, **extra_fields)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Le superuser doit avoir is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Le superuser doit avoir is_superuser=True.')
+
+        return self.create_user(num_phone, password, **extra_fields)
 
 # === Custom User ===
 class User(AbstractBaseUser, PermissionsMixin):
@@ -58,7 +64,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     eglise = models.ForeignKey(Church, on_delete=models.CASCADE, related_name='users')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     nom = models.CharField(max_length=100)
-    email = models.EmailField(unique=True)
+    num_phone = models.CharField(max_length=20,unique=True)
     date = models.DateField(default=timezone.now)
 
     is_active = True
@@ -66,11 +72,11 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     objects = CustomUserManager()
 
-    USERNAME_FIELD = 'email'
+    USERNAME_FIELD = 'num_phone'
     REQUIRED_FIELDS = ['nom', 'role', 'eglise']
 
     def __str__(self):
-        return self.email
+        return self.num_phone
 
 
 
@@ -172,7 +178,6 @@ class Groupe_Previsions(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     num_ordre = models.CharField(max_length=100)
     description_prevision = models.CharField(max_length=100)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
     
     def __str__(self):
         return self.num_ordre

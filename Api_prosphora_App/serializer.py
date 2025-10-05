@@ -34,11 +34,11 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         exclude = ['password']
-        
+
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'password', 'nom', 'role', 'eglise']
+        fields = ['id', 'num_phone', 'password', 'nom', 'role', 'eglise']
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
@@ -46,24 +46,25 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(password=password, **validated_data)
         return user
 
+
 class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
+    num_phone = serializers.CharField()
+    password = serializers.CharField()
 
     def validate(self, data):
-        user = authenticate(email=data['email'], password=data['password'])
+        user = authenticate(num_phone=data['num_phone'], password=data['password'])
         if user and user.is_active:
             abonnement = Abonnement.objects.filter(eglise=user.eglise).order_by('-date').first()
             return {
                 'user_id': user.id,
                 'nom': user.nom,
-                'email': user.email,
+                'num_phone': user.num_phone,
                 'role': user.role,
                 'eglise': user.eglise.nom,
                 'abonnement_mois': abonnement.mois if abonnement else None,
                 'abonnement_date': abonnement.date if abonnement else None,
             }
-        raise serializers.ValidationError("Email ou mot de passe incorrect.")
+        raise serializers.ValidationError("Numéro de téléphone ou mot de passe incorrect.")
 
 
 
