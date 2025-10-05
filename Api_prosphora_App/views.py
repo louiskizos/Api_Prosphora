@@ -233,6 +233,7 @@ class Groupe_Offrandes_Mixins(
 
         return self.list(request, *args, **kwargs)
     
+    
     def post(self, request):
         serializer = Groupe_OffrandesSerializer(data=request.data)
         if serializer.is_valid():
