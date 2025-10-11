@@ -268,11 +268,18 @@ class Offrande_Mixins(
 
     def get_queryset(self):
         pk = self.kwargs.get('pk')
+        grp = self.kwargs.get('grp')
+        if pk and grp:
+            return Sorte_Offrande.objects.filter(descript_recette__user__eglise__id=pk, descript_recette__id=grp)
         if pk:
             return Sorte_Offrande.objects.filter(id=pk)
+        if grp:
+            return Sorte_Offrande.objects.filter(descript_recette__id=grp)
+        return Sorte_Offrande.objects.all()
     
     def get(self, request, *args, **kwargs):
         pk = kwargs.get('pk')
+        grp = kwargs.get('grp')
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
