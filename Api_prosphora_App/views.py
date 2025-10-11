@@ -261,9 +261,6 @@ class Offrande_Mixins(
     mixins.ListModelMixin
 ):
 
-    #permission_classes = [IsAuthenticated,]
-
-
     queryset = Sorte_Offrande.objects.all()
     serializer_class = Sorte_OffrandeSerializer
     lookup_field = 'pk'
@@ -280,35 +277,23 @@ class Offrande_Mixins(
             return Sorte_Offrande.objects.filter(descript_recette__id=grp)
         return Sorte_Offrande.objects.all()
     
-
-
     def get(self, request, *args, **kwargs):
-
         pk = kwargs.get('pk')
         grp = kwargs.get('grp')
-        if pk and grp:
-            return self.list(request, *args, **kwargs)
-        if pk is not None:
-            return self.list(request, *args, **kwargs)
-        if grp is not None:
-            return self.list(request, *args, **kwargs)
-
         return self.list(request, *args, **kwargs)
-    
-    def post(self, request):
+
+    def post(self, request, *args, **kwargs):
         serializer = Sorte_OffrandeSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Offrande créée."})
         return Response(serializer.errors, status=400)
-    
+
     def put(self, request, *args, **kwargs):
-
         return self.update(request, *args, **kwargs)
-    
-    def delete(self, request, *args, **kwargs):
 
-        return self.destroy(request, *args, **kwargs)   
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
     
 # ======================== GROUPE PREVISION =========================
 class Groupe_Previsions_Mixins(
@@ -399,6 +384,58 @@ class Prevoir_Mixins(
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Prévoir créé."})
+        return Response(serializer.errors, status=400)
+    
+    def put(self, request, *args, **kwargs):
+
+        return self.update(request, *args, **kwargs)
+    
+    def delete(self, request, *args, **kwargs):
+
+        return self.destroy(request, *args, **kwargs)   
+    
+
+
+# ======================== PAYEMENT =========================
+
+class Payement_Offrande_Mixins(
+    generics.GenericAPIView,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin
+):
+
+    #permission_classes = [IsAuthenticated,]
+
+
+    queryset = Payement_Offrande.objects.all()
+    serializer_class = PayementOffrandeSerializer
+    lookup_field = 'pk'
+    
+
+    def get_queryset(self):
+        pk = self.kwargs.get('pk')
+        if pk:
+            return Payement_Offrande.objects.filter(pk=pk)
+        return Payement_Offrande.objects.all()
+    
+
+
+    def get(self, request, *args, **kwargs):
+
+        pk = kwargs.get('pk')
+        if pk is not None:
+            return self.retrieve(request, *args, **kwargs)
+
+        return self.list(request, *args, **kwargs)
+    
+    def post(self, request):
+        serializer = PayementOffrandeSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Payement créé."})
         return Response(serializer.errors, status=400)
     
     def put(self, request, *args, **kwargs):

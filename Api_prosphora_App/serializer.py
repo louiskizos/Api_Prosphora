@@ -9,7 +9,9 @@ from .models import *
 class PayementOffrandeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payement_Offrande
-        fields = ['nom_offrande', 'departement', 'montant', 'date_payement', 'annee']
+        #fields = ['nom_offrande', 'departement', 'montant', 'date_payement', 'annee']
+        fields = '__all__'
+
 
 # Sérialiseur pour Prevoir
 class PrevoirSerializer(serializers.ModelSerializer):
@@ -88,3 +90,9 @@ class PrevoirSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prevoir
         fields = '__all__'
+
+
+# class PayementSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Payement_Offrande
+#         fields = '__all__'

@@ -29,8 +29,8 @@ urlpatterns = [
 # ============= Sorte_Offrande ====================
 
     path('offrande/', Offrande_Mixins.as_view(), name='create-offrande'),
-    path('delete_offrande/<str:pk>/', Offrande_Mixins.as_view(), name='delete_offrande'),
-    path('update_offrande/<str:pk>/', Offrande_Mixins.as_view(), name='update_offrande'),
+    path('delete_offrande/<int:pk>/', Offrande_Mixins.as_view(), name='delete_offrande'),
+    path('update_offrande/<int:pk>/', Offrande_Mixins.as_view(), name='update_offrande'),
     path('liste_offrande_par_eglise/<int:pk>/', Offrande_Mixins.as_view(), name='liste_offrande_par_eglise'),
     path('liste_offrande_par_groupe/<str:pk>/', Offrande_Mixins.as_view(), name='liste_offrande_par_groupe'),
     path('liste_offrande_par_eglise_et_groupe/<int:pk>/<str:grp>/', Offrande_Mixins.as_view(), name='liste_offrande_par_eglise_et_groupe'),
@@ -38,14 +38,9 @@ urlpatterns = [
 
 
 # ============= Payement Offrande ====================
-    # path('payement_offrande/', Payement_Offrande_Mixins.as_view(), name='create-payement_offrande'),
-    # path('delete_payement_offrande/<str:pk>/', Payement_Offrande_Mixins.as_view(), name='delete_payement_offrande'),
-    # path('update_payement_offrande/<str:pk>/', Payement_Offrande_Mixins.as_view(), name='update_payement_offrande'),
-    # path('liste_payement_offrande_par_eglise/<int:pk>/', Payement_Offrande_Mixins.as_view(), name='liste_payement_offrande_par_eglise'),
-    # path('total_payement_offrande_par_eglise/<int:pk>/', Payement_Offrande_Mixins.as_view(), name='total_payement_offrande_par_eglise'),
-    # path('total_payement_offrande_par_eglise_et_annee/<int:pk>/<int:annee>/', Payement_Offrande_Mixins.as_view(), name='total_payement_offrande_par_eglise_et_annee'),
-    # path('total_payement_offrande_par_annee/<int:annee>/', Payement_Offrande_Mixins.as_view(), name='total_payement_offrande_par_annee'),
-    # path('total_payement_offrande_par_eglise_et_mois/<int:pk>/<int:mois>/', Payement_Offrande_Mixins.as_view(), name='total_payement_offrande_par_eglise_et_mois'),
+    path('payement_offrande/', Payement_Offrande_Mixins.as_view(), name='create-payement_offrande'),
+    path('delete_payement_offrande/<str:pk>/', Payement_Offrande_Mixins.as_view(), name='delete_payement_offrande'),
+    path('update_payement_offrande/<str:pk>/', Payement_Offrande_Mixins.as_view(), name='update_payement_offrande'),
 
 # ============= Groupe Previsions   ====================
     path('groupe_prevision/', Groupe_Previsions_Mixins.as_view(), name='create-groupe_prevision'),
@@ -57,5 +52,7 @@ urlpatterns = [
     path('update_prevoir/<str:pk>/', Prevoir_Mixins.as_view(), name='update_prevoir'),
     path('liste_prevoir_par_eglise/<int:pk>/', Prevoir_Mixins.as_view(), name='liste_prevoir_par_eglise'),
     path('total_prevoir_par_eglise/<str:pk>/', Prevoir_Mixins.as_view(), name='total_prevoir_par_eglise'),
+
+
 
 ]

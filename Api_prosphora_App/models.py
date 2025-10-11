@@ -95,7 +95,6 @@ class Groupe_Offrandes(models.Model):
 # === Sorte Offrande ===
 class Sorte_Offrande(models.Model):
     
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     descript_recette = models.ForeignKey(Groupe_Offrandes, on_delete=models.CASCADE)
     num_compte = models.CharField(max_length=20)
     nom_offrande = models.TextField(max_length=50)
@@ -206,3 +205,6 @@ class Prevoir(models.Model):
 #     class Meta:
 #         model = Prevoir
 #         fields = ['descript_prevision', 'montant_prevus', 'annee_prevus']
+
+
+
