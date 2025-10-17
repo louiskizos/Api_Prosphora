@@ -54,5 +54,18 @@ urlpatterns = [
     path('total_prevoir_par_eglise/<str:pk>/', Prevoir_Mixins.as_view(), name='total_prevoir_par_eglise'),
 
 
+# ============= Ahadi ====================
+    path('ahadi/', Ahadi_Mixins.as_view(), name='create-ahadi'),
+    path('delete_ahadi/<str:pk>/', Ahadi_Mixins.as_view(), name='delete_ahadi'),
+    path('update_ahadi/<str:pk>/', Ahadi_Mixins.as_view(), name='update_ahadi'),
+
+# ============ Etat de besoin ===============
+    path('etat_besoin/', EtatBesoin_Mixins.as_view(), name='create-etat_besoin'),
+    path('delete_etat_besoin/<str:pk>/', EtatBesoin_Mixins.as_view(), name='delete_etat_besoin'),
+    path('update_etat_besoin/<str:pk>/', EtatBesoin_Mixins.as_view(), name='update_etat_besoin'),
+
+
+# ============= Bilan ====================
+    path('bilan/', BilanAPIView.as_view(), name='bilan'),
 
 ]

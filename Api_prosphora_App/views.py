@@ -11,7 +11,12 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import permissions
 from django.contrib.auth import logout
 from django.contrib.auth import authenticate, login
-
+from django.db.models import Sum, Q
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Sum, Q
+from decimal import Decimal
 
 class Register_Mixins(
     generics.GenericAPIView,
@@ -445,3 +450,208 @@ class Payement_Offrande_Mixins(
     def delete(self, request, *args, **kwargs):
 
         return self.destroy(request, *args, **kwargs)   
+
+
+# ======================== AHADI =========================
+
+class Ahadi_Mixins(
+    generics.GenericAPIView,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin
+):
+
+    #permission_classes = [IsAuthenticated,]
+
+
+    queryset = Ahadi.objects.all()
+    serializer_class = AhadiSerializer
+    lookup_field = 'pk'
+    
+
+    def get_queryset(self):
+        pk = self.kwargs.get('pk')
+        if pk:
+            return Ahadi.objects.filter(pk=pk)
+        return Ahadi.objects.all()
+    
+
+
+    def get(self, request, *args, **kwargs):
+
+        pk = kwargs.get('pk')
+        if pk is not None:
+            return self.retrieve(request, *args, **kwargs)
+
+        return self.list(request, *args, **kwargs)
+    
+    def post(self, request):
+        serializer = AhadiSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Ahadi créé."})
+        return Response(serializer.errors, status=400)
+    
+    def put(self, request, *args, **kwargs):
+
+        return self.update(request, *args, **kwargs)
+    
+    def delete(self, request, *args, **kwargs):
+
+        return self.destroy(request, *args, **kwargs)
+
+# ======================== ETAT DE BESOIN =========================
+class EtatBesoin_Mixins(
+    generics.GenericAPIView,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin
+):
+
+    #permission_classes = [IsAuthenticated,]
+
+
+    queryset = EtatBesoin.objects.all()
+    serializer_class = EtatBesoinSerializer
+    lookup_field = 'pk'
+    
+
+    def get_queryset(self):
+        pk = self.kwargs.get('pk')
+        if pk:
+            return EtatBesoin.objects.filter(pk=pk)
+        return EtatBesoin.objects.all()
+    
+
+
+    def get(self, request, *args, **kwargs):
+
+        pk = kwargs.get('pk')
+        if pk is not None:
+            return self.retrieve(request, *args, **kwargs)
+
+        return self.list(request, *args, **kwargs)
+    
+    def post(self, request):
+        serializer = EtatBesoinSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Etat de besoin créé."})
+        return Response(serializer.errors, status=400)
+    
+    def put(self, request, *args, **kwargs):
+
+        return self.update(request, *args, **kwargs)
+    
+    def delete(self, request, *args, **kwargs):
+
+        return self.destroy(request, *args, **kwargs)
+
+# ======================== Rapport Bilan =========================   
+
+class BilanAPIView(APIView):
+    """
+    API view qui retourne un bilan détaillé des prévisions et paiements.
+    """
+
+    def get(self, request):
+
+        prevision_qs = Prevoir.objects.select_related('descript_prevision')
+        paiement_qs = Payement_Offrande.objects.select_related('nom_offrande')
+
+
+        # Agrégation des prévisions
+        grouped = prevision_qs.values(
+            'descript_prevision__num_ordre',
+            'descript_prevision__description_prevision',
+            'annee_prevus'
+        ).annotate(total_prevus=Sum('montant_prevus')).order_by('descript_prevision__num_ordre', 'annee_prevus')
+
+        # Traitement des données
+        combined_data = []
+        for group in grouped:
+            num_ordre = group['descript_prevision__num_ordre']
+            annee = group['annee_prevus']
+
+            # Récupérer les prévisions liées à ce groupe
+            related_data = prevision_qs.filter(
+                descript_prevision__num_ordre=num_ordre,
+                annee_prevus=annee
+            ).values('nom_prevision', 'num_compte', 'montant_prevus')
+
+            # Récupérer les paiements
+            pay_qs_filtered = paiement_qs.filter(
+                nom_offrande__descript_recette__num_ordre=num_ordre,
+                annee=annee
+            )
+
+            # Agrégation des paiements
+            pay_grouped = pay_qs_filtered.values(
+                'nom_offrande__num_compte',
+                'nom_offrande__nom_offrande'
+            ).annotate(
+                total_recette=Sum('montant', filter=Q(type_payement='Entree')),
+                total_depense=Sum('montant', filter=Q(type_payement='Sortie')),
+            )
+
+            # Fusionner les prévisions et paiements
+            prevision_list = [{
+                'libelle': item['nom_prevision'],
+                'num_compte': item['num_compte'],
+                'recette': '-',
+                'depense': '-',
+                'prevision': item['montant_prevus'],
+            } for item in related_data]
+
+            paiement_list = [{
+                'libelle': item['nom_offrande__nom_offrande'],
+                'num_compte': item['nom_offrande__num_compte'],
+                'recette': item['total_recette'] or '-',
+                'depense': item['total_depense'] or '-',
+                'prevision': '-',
+            } for item in pay_grouped]
+
+            lignes_fusionnees = prevision_list + paiement_list
+
+            total_recettes = sum(
+                [p['recette'] if p['recette'] != '-' else 0 for p in paiement_list], Decimal(0)
+            )
+            total_depenses = sum(
+                [p['depense'] if p['depense'] != '-' else 0 for p in paiement_list], Decimal(0)
+            )
+
+            combined_data.append({
+                'num_ordre': num_ordre,
+                'description_prevision': group['descript_prevision__description_prevision'],
+                'annee_prevus': annee,
+                'total_prevus': group['total_prevus'] or 0,
+                'total_recettes': total_recettes,
+                'total_depenses': total_depenses,
+                'lignes': lignes_fusionnees
+            })
+
+
+        data_filtered = EtatBesoin.objects.filter(validation_pasteur=True)
+        data_etat_counter = data_filtered.count()
+
+        data_filteredFalse = EtatBesoin.objects.filter(validation_pasteur=False)
+        data_etat_counter_P = data_filteredFalse.count()
+
+        context = {
+            'data_etat_count_C': data_etat_counter,
+            'data_etat_besoin_true': data_filtered.values(),
+            'data_etat_besoin_false': data_filteredFalse.values(),
+            'data_etat_count_P': data_etat_counter_P,
+            'data': combined_data
+        }
+
+        return Response(context, status=status.HTTP_200_OK)
+
+
+
+# =================== Rapport prevision =======================================
+

@@ -92,7 +92,12 @@ class PrevoirSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-# class PayementSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Payement_Offrande
-#         fields = '__all__'
+class AhadiSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ahadi
+        fields = '__all__'
+
+class EtatBesoinSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EtatBesoin
+        fields = '__all__'
