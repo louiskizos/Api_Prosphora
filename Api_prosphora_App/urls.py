@@ -67,5 +67,7 @@ urlpatterns = [
 
 # ============= Bilan ====================
     path('bilan/', BilanAPIView.as_view(), name='bilan'),
+# ============= Livre de caisse =========================
+    path('livre_caisse/', LivreCaisseAPIView.as_view(), name='livre_caisse'),
 
 ]

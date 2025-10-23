@@ -468,10 +468,6 @@ class Ahadi_Mixins(
     # permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        """
-        Liste tous les engagements (Ahadi) avec le total payé et le reste à payer.
-        Si un 'pk' est fourni, retourne un seul objet.
-        """
 
         pk = kwargs.get('pk')
         engagements = self.get_queryset()
@@ -484,7 +480,7 @@ class Ahadi_Mixins(
                 type_payement="Entree",
                 nom_offrande=OuterRef('nom_offrande'),
                 departement=OuterRef('nom_postnom'),
-                nom_offrande__descript_recette__description_recette="Les engagements des adhérents"
+                nom_offrande__descript_recette__description_recette="Les engagement des adhérents"
             )
             .values('nom_offrande', 'departement')
             .annotate(total_paye=Sum('montant'))
@@ -499,7 +495,7 @@ class Ahadi_Mixins(
             e.reste = (e.montant or Decimal('0')) - (e.total_paye or Decimal('0'))
 
         serializer = self.get_serializer(engagements, many=True)
-        return Response({"results": serializer.data}, status=status.HTTP_200_OK)
+        return Response({"ahadi_data": serializer.data}, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
         
@@ -570,42 +566,40 @@ class EtatBesoin_Mixins(
 # ======================== Rapport Bilan =========================   
 
 class BilanAPIView(APIView):
-    """
-    API view qui retourne un bilan détaillé des prévisions et paiements.
-    """
 
     def get(self, request):
-
         prevision_qs = Prevoir.objects.select_related('descript_prevision')
         paiement_qs = Payement_Offrande.objects.select_related('nom_offrande')
 
-
-        # Agrégation des prévisions
         grouped = prevision_qs.values(
             'descript_prevision__num_ordre',
             'descript_prevision__description_prevision',
-            'annee_prevus'
-        ).annotate(total_prevus=Sum('montant_prevus')).order_by('descript_prevision__num_ordre', 'annee_prevus')
+            'date_prevus'
+        ).annotate(total_prevus=Sum('montant_prevus')).order_by('descript_prevision__num_ordre', 'date_prevus')
 
-        # Traitement des données
         combined_data = []
         for group in grouped:
             num_ordre = group['descript_prevision__num_ordre']
-            annee = group['annee_prevus']
+            raw_date = group['date_prevus']
 
-            # Récupérer les prévisions liées à ce groupe
+            if isinstance(raw_date, str):
+                from django.utils.dateparse import parse_date
+                date_prevus = parse_date(raw_date)
+            else:
+                date_prevus = raw_date
+
+            annee = date_prevus.year
+
             related_data = prevision_qs.filter(
                 descript_prevision__num_ordre=num_ordre,
-                annee_prevus=annee
+                date_prevus__year=annee  # filtrage par année corrigé ici
             ).values('nom_prevision', 'num_compte', 'montant_prevus')
 
-            # Récupérer les paiements
             pay_qs_filtered = paiement_qs.filter(
                 nom_offrande__descript_recette__num_ordre=num_ordre,
-                annee=annee
+                date_payement__year=annee
             )
 
-            # Agrégation des paiements
             pay_grouped = pay_qs_filtered.values(
                 'nom_offrande__num_compte',
                 'nom_offrande__nom_offrande'
@@ -614,7 +608,6 @@ class BilanAPIView(APIView):
                 total_depense=Sum('montant', filter=Q(type_payement='Sortie')),
             )
 
-            # Fusionner les prévisions et paiements
             prevision_list = [{
                 'libelle': item['nom_prevision'],
                 'num_compte': item['num_compte'],
@@ -631,8 +624,6 @@ class BilanAPIView(APIView):
                 'prevision': '-',
             } for item in pay_grouped]
 
-            lignes_fusionnees = prevision_list + paiement_list
-
             total_recettes = sum(
                 [p['recette'] if p['recette'] != '-' else 0 for p in paiement_list], Decimal(0)
             )
@@ -647,26 +638,52 @@ class BilanAPIView(APIView):
                 'total_prevus': group['total_prevus'] or 0,
                 'total_recettes': total_recettes,
                 'total_depenses': total_depenses,
-                'lignes': lignes_fusionnees
+                'lignes': prevision_list + paiement_list
             })
 
-
-        data_filtered = EtatBesoin.objects.filter(validation_pasteur=True)
-        data_etat_counter = data_filtered.count()
-
-        data_filteredFalse = EtatBesoin.objects.filter(validation_pasteur=False)
-        data_etat_counter_P = data_filteredFalse.count()
-
         context = {
-            'data_etat_count_C': data_etat_counter,
-            'data_etat_besoin_true': data_filtered.values(),
-            'data_etat_besoin_false': data_filteredFalse.values(),
-            'data_etat_count_P': data_etat_counter_P,
-            'data': combined_data
+            'bilan_data': combined_data
         }
 
         return Response(context, status=status.HTTP_200_OK)
 
+# =================== Rapport livre de caisse =======================================
+
+
+class LivreCaisseAPIView(APIView):
+
+    def get(self, request):
+        
+        search_query = request.GET.get('q', '').strip()
+
+        data_queryset = Payement_Offrande.objects.all().order_by('nom_offrande')
+
+        cumulative_sums = []
+        current_sum = 0
+
+        for item in data_queryset:
+            if item.type_payement == 'Sortie':
+                current_sum -= item.montant or 0
+            else:
+                current_sum += item.montant or 0
+            cumulative_sums.append(current_sum)
+
+        processed_data = []
+        for i, item in enumerate(data_queryset):
+            processed_data.append({
+                'id': item.id,
+                'date_payement': item.date_payement,
+                'nom_offrande': str(item.nom_offrande),
+                'num_compte' : str(item.nom_offrande.num_compte),
+                'type_payement': item.type_payement,    
+                'montant': item.montant,
+                'cumulative_sum': cumulative_sums[i],
+            })
+        response_data = {
+            'livre_caisse': processed_data,
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 # =================== Rapport prevision =======================================
