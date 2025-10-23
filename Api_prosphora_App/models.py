@@ -116,8 +116,6 @@ class Payement_Offrande(models.Model):
     type_monaie = models.CharField(max_length=100, default="CDF")
     motif = models.CharField(max_length=255,)
     date_payement = models.DateField()
-    annee = models.IntegerField()
-
 
 # === Ahadi ===
 class Ahadi(models.Model):
@@ -130,21 +128,6 @@ class Ahadi(models.Model):
     motif = models.CharField(max_length=255)
     type_monaie = models.CharField(max_length=100, default="CDF")
     date_ahadi = models.DateField()
-    annee = models.IntegerField()
-
-
-
-# class dime(models.Model):
-    
-#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-#     nom_offrande = models.ForeignKey(Sorte_Offrande, on_delete=models.CASCADE)
-#     nom_postnom = models.CharField(max_length=100)
-#     chapelle = models.CharField(max_length=100)
-#     montant = models.DecimalField(max_digits=15, decimal_places=2)
-#     montant_lettre = models.CharField(max_length=255)
-#     motif = models.CharField(max_length=255)
-#     date_ahadi = models.DateField()
-#     annee = models.IntegerField()
   
     
 
@@ -161,7 +144,6 @@ class EtatBesoin(models.Model):
     motif = models.TextField()
     date_etat_besoin = models.DateField(auto_now_add=True)
     validation_pasteur = models.BooleanField(default=False)
-    #commentaire_pasteur = models.TextField()
     validation_caisse = models.BooleanField(default=False)
 
     def __str__(self):
@@ -191,20 +173,9 @@ class Prevoir(models.Model):
     nom_prevision = models.TextField(max_length=50)
     montant_prevus = models.DecimalField(max_digits=15, decimal_places=2)
     type_monaie = models.CharField(max_length=100, default="CDF")
-    annee_prevus = models.IntegerField()
+    date_prevus = models.DateField(default=timezone.now)
     def __str__(self):
         return self.nom_prevision
     
-    
-# class PayementOffrandeSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Payement_Offrande
-#         fields = ['nom_offrande', 'departement', 'montant', 'date_payement', 'annee']
-        
-# class PrevoirSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Prevoir
-#         fields = ['descript_prevision', 'montant_prevus', 'annee_prevus']
-
 
 

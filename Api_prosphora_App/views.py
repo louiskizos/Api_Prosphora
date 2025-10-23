@@ -15,7 +15,7 @@ from django.db.models import Sum, Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, OuterRef, Subquery, Sum
 from decimal import Decimal
 
 class Register_Mixins(
@@ -462,45 +462,61 @@ class Ahadi_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
 ):
-
-    #permission_classes = [IsAuthenticated,]
-
-
     queryset = Ahadi.objects.all()
     serializer_class = AhadiSerializer
     lookup_field = 'pk'
-    
-
-    def get_queryset(self):
-        pk = self.kwargs.get('pk')
-        if pk:
-            return Ahadi.objects.filter(pk=pk)
-        return Ahadi.objects.all()
-    
-
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        """
+        Liste tous les engagements (Ahadi) avec le total payé et le reste à payer.
+        Si un 'pk' est fourni, retourne un seul objet.
+        """
 
         pk = kwargs.get('pk')
-        if pk is not None:
-            return self.retrieve(request, *args, **kwargs)
+        engagements = self.get_queryset()
 
-        return self.list(request, *args, **kwargs)
-    
-    def post(self, request):
-        serializer = AhadiSerializer(data=request.data)
+        if pk:
+            engagements = engagements.filter(pk=pk)
+
+        paiements = (
+            Payement_Offrande.objects.filter(
+                type_payement="Entree",
+                nom_offrande=OuterRef('nom_offrande'),
+                departement=OuterRef('nom_postnom'),
+                nom_offrande__descript_recette__description_recette="Les engagements des adhérents"
+            )
+            .values('nom_offrande', 'departement')
+            .annotate(total_paye=Sum('montant'))
+            .values('total_paye')
+        )
+
+        engagements = engagements.annotate(
+            total_paye=Subquery(paiements, output_field=models.DecimalField(max_digits=15, decimal_places=2))
+        )
+
+        for e in engagements:
+            e.reste = (e.montant or Decimal('0')) - (e.total_paye or Decimal('0'))
+
+        serializer = self.get_serializer(engagements, many=True)
+        return Response({"results": serializer.data}, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Ahadi créé."})
-        return Response(serializer.errors, status=400)
-    
+            return Response({"message": "Ahadi créé avec succès."}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def put(self, request, *args, **kwargs):
-
+        
         return self.update(request, *args, **kwargs)
-    
-    def delete(self, request, *args, **kwargs):
 
+    def delete(self, request, *args, **kwargs):
+        
         return self.destroy(request, *args, **kwargs)
+
 
 # ======================== ETAT DE BESOIN =========================
 class EtatBesoin_Mixins(
@@ -654,4 +670,3 @@ class BilanAPIView(APIView):
 
 
 # =================== Rapport prevision =======================================
-

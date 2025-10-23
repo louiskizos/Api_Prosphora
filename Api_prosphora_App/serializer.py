@@ -92,10 +92,19 @@ class PrevoirSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+# class AhadiSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Ahadi
+#         fields = '__all__'
+# serializers.py
+
 class AhadiSerializer(serializers.ModelSerializer):
+    total_paye = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
+    reste = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
+
     class Meta:
         model = Ahadi
-        fields = '__all__'
+        fields = '__all__'  
 
 class EtatBesoinSerializer(serializers.ModelSerializer):
     class Meta:
