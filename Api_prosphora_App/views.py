@@ -60,7 +60,7 @@ class Register_Mixins(
 class LoginView(APIView):
     
     def post(self, request):
-        
+
         num_phone = request.data.get("num_phone")
         password = request.data.get("password")
         print(f"Login attempt: num_phone={num_phone}, password={'*' * len(password) if password else None}")
@@ -478,10 +478,10 @@ class Ahadi_Mixins(
 
         paiements = (
             Payement_Offrande.objects.filter(
-                type_payement="Entree",
+                type_payement="in",
                 nom_offrande=OuterRef('nom_offrande'),
                 departement=OuterRef('nom_postnom'),
-                nom_offrande__descript_recette__description_recette="Les engagement des adhérents"
+                nom_offrande__descript_recette__description_recette="LES ENGAGEMENTS DES ADHERENTS"
             )
             .values('nom_offrande', 'departement')
             .annotate(total_paye=Sum('montant'))
