@@ -1,15 +1,17 @@
-from django.contrib.auth.backends import ModelBackend
-from .models import User
+# Api_prosphora_App/backends.py
+from django.contrib.auth.backends import BaseBackend
+from .models import App_user
 
-class NumPhoneBackend(ModelBackend):
-    def authenticate(self, request, num_phone=None, password=None, **kwargs):
-        if num_phone is None or password is None:
-            return None
+class NumPhoneBackend(BaseBackend):
+    def authenticate(self, request, num_phone=None, password=None):
         try:
-            user = User.objects.get(num_phone=num_phone)
-        except User.DoesNotExist:
+            user = App_user.objects.get(num_phone=num_phone)
+            if user.check_password(password):
+                return user
+        except App_user.DoesNotExist:
             return None
-        
-        if user.check_password(password) and user.is_active:
-            return user
-        return None
+    def get_user(self, user_id):
+        try:
+            return App_user.objects.get(pk=user_id)
+        except App_user.DoesNotExist:
+            return None
