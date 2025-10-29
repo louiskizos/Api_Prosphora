@@ -675,7 +675,8 @@ class LivreCaisseAPIView(APIView):
                 'date_payement': item.date_payement,
                 'nom_offrande': str(item.nom_offrande),
                 'num_compte' : str(item.nom_offrande.num_compte),
-                'type_payement': item.type_payement,    
+                'type_payement': item.type_payement,
+                'type_monaie' : item.type_monaie,    
                 'montant': item.montant,
                 'cumulative_sum': cumulative_sums[i],
             })
