@@ -604,8 +604,8 @@ class BilanAPIView(APIView):
                 'nom_offrande__num_compte',
                 'nom_offrande__nom_offrande'
             ).annotate(
-                total_recette=Sum('montant', filter=Q(type_payement='Entree')),
-                total_depense=Sum('montant', filter=Q(type_payement='Sortie')),
+                total_recette=Sum('montant', filter=Q(type_payement='in')),
+                total_depense=Sum('montant', filter=Q(type_payement='out')),
             )
 
             prevision_list = [{
@@ -662,7 +662,7 @@ class LivreCaisseAPIView(APIView):
         current_sum = 0
 
         for item in data_queryset:
-            if item.type_payement == 'Sortie':
+            if item.type_payement == 'out':
                 current_sum -= item.montant or 0
             else:
                 current_sum += item.montant or 0
