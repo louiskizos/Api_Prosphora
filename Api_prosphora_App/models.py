@@ -106,8 +106,7 @@ class Sorte_Offrande(models.Model):
 
 # === Payement ===
 class Payement_Offrande(models.Model):
-    
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.BigAutoField(primary_key=True)
     nom_offrande = models.ForeignKey(Sorte_Offrande, on_delete=models.CASCADE)
     departement = models.CharField(max_length=100)
     type_payement = models.CharField(max_length=100)
