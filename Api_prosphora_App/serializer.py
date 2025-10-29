@@ -34,18 +34,18 @@ class AbonnementSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
+        model = App_user
         exclude = ['password']
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
+        model = App_user
         fields = ['id', 'num_phone', 'password', 'nom', 'role', 'eglise']
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
         password = validated_data.pop('password')
-        user = User.objects.create_user(password=password, **validated_data)
+        user = App_user.objects.create_user(password=password, **validated_data)
         return user
 
 
