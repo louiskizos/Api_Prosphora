@@ -28,15 +28,15 @@ class Register_Mixins(
     ):
     
 
-    queryset = User.objects.all()
+    queryset = App_user.objects.all()
     serializer_class = RegisterSerializer
     lookup_field = 'pk'
 
     def get_queryset(self):
         pk = self.kwargs.get('pk')
         if pk:
-            return User.objects.filter(pk=pk)
-        return User.objects.all()
+            return App_user.objects.filter(pk=pk)
+        return App_user.objects.all()
     
     def get(self, request, *args, **kwargs):
 

@@ -93,6 +93,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'Api_prosphora_Core.wsgi.application'
+AUTH_USER_MODEL = "Api_prosphora_App.App_user"
 
 
 # Database
@@ -105,11 +106,10 @@ WSGI_APPLICATION = 'Api_prosphora_Core.wsgi.application'
 #     }
 # }
 
-import dj_database_url
 
 DATABASES = {
     'default': dj_database_url.parse(
-        "postgresql://prospora_api_db_user:OpqpLB2UGNtd9q8PPPACowUDp4yLYho5@dpg-d40uilvdiees73akmm9g-a.oregon-postgres.render.com/prospora_api_db"
+        "postgresql://prospora_api_db_s74y_user:ogrMoA3qrwXuS3tqgP9JtmaGv4NpEwFC@dpg-d41097vdiees73am0tu0-a.oregon-postgres.render.com/prospora_api_db_s74y"
     )
 }
 

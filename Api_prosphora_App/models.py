@@ -52,7 +52,7 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(num_phone, password, **extra_fields)
 
 # === Custom User ===
-class User(AbstractBaseUser, PermissionsMixin):
+class App_user(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = (
         ('admin', 'Admin'),
         ('gestionnaire', 'Gestionnaire'),
@@ -78,6 +78,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.num_phone
 
+from django.conf import settings
+from django.db import models
 
 
 # === Groupe Offrandes ===
@@ -85,7 +87,10 @@ class Groupe_Offrandes(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     num_ordre = models.CharField(max_length=100)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
     description_recette = models.CharField(max_length=100)
     
     def __str__(self):
@@ -94,7 +99,7 @@ class Groupe_Offrandes(models.Model):
 
 # === Sorte Offrande ===
 class Sorte_Offrande(models.Model):
-    
+    id = models.AutoField(primary_key=True)
     descript_recette = models.ForeignKey(Groupe_Offrandes, on_delete=models.CASCADE)
     num_compte = models.CharField(max_length=20)
     nom_offrande = models.TextField(max_length=50)
@@ -103,6 +108,7 @@ class Sorte_Offrande(models.Model):
         return self.nom_offrande
 
     
+
 
 # === Payement ===
 class Payement_Offrande(models.Model):
