@@ -3,20 +3,18 @@ from rest_framework.response import Response
 from rest_framework import status
 from .serializer import *
 from .models import *
-from rest_framework import authentication, generics, mixins, permissions
-from .permissions import IsAbonnementValide
+from rest_framework import generics, mixins
+from .permissions import IsAbonnementValide, IsSameChurch
 from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework import permissions
 from django.contrib.auth import logout
 from django.contrib.auth import authenticate, login
-from django.db.models import Sum, Q
-from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.db.models import Sum, Q, OuterRef, Subquery, Sum
+from django.db.models import Sum, Q, OuterRef, Subquery, Sum, DecimalField, BigIntegerField
 from decimal import Decimal
+from django.db.models.functions import Coalesce, ExtractYear, Cast
+
+
 
 class Register_Mixins(
     generics.GenericAPIView,
@@ -87,13 +85,6 @@ class LoginView(APIView):
 
         return Response({"error": "Identifiants invalides."}, status=status.HTTP_401_UNAUTHORIZED)
 
-# class LoginView(APIView):
-#     def post(self, request):
-#         serializer = LoginSerializer(data=request.data)
-#         if serializer.is_valid():
-#             return Response(serializer.validated_data, status=status.HTTP_200_OK)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class LogoutView(APIView):
     
@@ -111,7 +102,7 @@ class Church_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
     ):
-    #permission_classes = [IsAuthenticated, IsAbonnementValide]
+    permission_classes = [IsAuthenticated, IsSameChurch]
     
     queryset = Church.objects.all()
     serializer_class = ChurchSerializer
@@ -127,12 +118,12 @@ class Church_Mixins(
         return self.list(request, *args, **kwargs)
     
     def get_queryset(self):
+        user_eglise = self.request.user.eglise
         pk = self.kwargs.get('pk')
         if pk:
-            return Church.objects.filter(pk=pk)
-        return Church.objects.all()
-    
-
+            return Church.objects.filter(pk=pk, id=user_eglise.id)
+        
+        return Church.objects.filter(id=user_eglise.id)
 
 
     def post(self, request, *args, **kwargs):
@@ -165,7 +156,7 @@ class Abonnement_Mixins(
     mixins.ListModelMixin
 ):
 
-    #permission_classes = [IsAuthenticated,]
+    permission_classes = [IsAuthenticated]
 
 
     queryset = Abonnement.objects.all()
@@ -179,6 +170,14 @@ class Abonnement_Mixins(
             return Abonnement.objects.filter(pk=pk)
         return Abonnement.objects.all()
     
+    # def get_queryset(self):
+    #     abonnement_eglise = self.request.user.eglise
+    #     pk = self.kwargs.get('pk')
+    #     if pk:
+    #         return Abonnement.objects.filter(pk=pk, id=abonnement_eglise.id)
+        
+    #     return Abonnement.objects.filter(id=abonnement_eglise.id)
+
 
 
     def get(self, request, *args, **kwargs):
@@ -216,7 +215,7 @@ class Groupe_Offrandes_Mixins(
     mixins.ListModelMixin
 ):
 
-    #permission_classes = [IsAuthenticated,]
+    permission_classes = [IsAuthenticated]
 
 
     queryset = Groupe_Offrandes.objects.all()
@@ -230,6 +229,9 @@ class Groupe_Offrandes_Mixins(
             return Groupe_Offrandes.objects.filter(pk=pk)
         return Groupe_Offrandes.objects.all()
     
+    def get_queryset(self):
+        user_eglise = self.request.user.eglise
+        return Groupe_Offrandes.objects.filter(user__eglise=user_eglise)
 
 
     def get(self, request, *args, **kwargs):
@@ -266,6 +268,8 @@ class Offrande_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
 ):
+ 
+    permission_classes = [IsAuthenticated, IsAbonnementValide]
 
     queryset = Sorte_Offrande.objects.all()
     serializer_class = Sorte_OffrandeSerializer
@@ -525,7 +529,7 @@ class EtatBesoin_Mixins(
     mixins.ListModelMixin
 ):
 
-    #permission_classes = [IsAuthenticated,]
+    permission_classes = [IsAuthenticated, IsAbonnementValide]
 
 
     queryset = EtatBesoin.objects.all()
@@ -565,16 +569,10 @@ class EtatBesoin_Mixins(
         return self.destroy(request, *args, **kwargs)
 
 # ======================== Rapport Bilan =========================   
-from decimal import Decimal
-from django.db.models import Sum, Q, DecimalField, BigIntegerField
-from django.db.models.functions import Coalesce, ExtractYear, Cast
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-
-from .models import Prevoir, Payement_Offrande
 
 class BilanAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         prevision_qs = Prevoir.objects.select_related('descript_prevision')
@@ -690,13 +688,15 @@ class BilanAPIView(APIView):
 
 class LivreCaisseAPIView(APIView):
 
+    permission_classes = [IsAuthenticated, IsAbonnementValide]
+
     def get(self, request):
         search_query = request.GET.get('q', '').strip()
 
-        # On trie par type_monaie et date (plus logique pour les cumuls)
+      
         data_queryset = Payement_Offrande.objects.all().order_by('type_monaie', 'date_payement')
 
-        # Dictionnaire pour stocker les cumuls par type de monnaie
+        
         cumulative_sums_by_currency = {}
 
         processed_data = []
@@ -705,17 +705,17 @@ class LivreCaisseAPIView(APIView):
             monnaie = item.type_monaie
             montant = item.montant or 0
 
-            # Initialiser le cumul si la monnaie n'existe pas encore
+            
             if monnaie not in cumulative_sums_by_currency:
                 cumulative_sums_by_currency[monnaie] = 0
 
-            # Ajouter ou soustraire selon le type de paiement
+            
             if item.type_payement == 'out':
                 cumulative_sums_by_currency[monnaie] -= montant
             else:
                 cumulative_sums_by_currency[monnaie] += montant
 
-            # Ajouter l’élément traité
+            
             processed_data.append({
                 'id': item.id,
                 'date_payement': item.date_payement,
