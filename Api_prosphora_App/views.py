@@ -102,7 +102,6 @@ class Church_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
     ):
-    permission_classes = [IsAuthenticated, IsSameChurch]
     
     queryset = Church.objects.all()
     serializer_class = ChurchSerializer
@@ -118,13 +117,11 @@ class Church_Mixins(
         return self.list(request, *args, **kwargs)
     
     def get_queryset(self):
-        user_eglise = self.request.user.eglise
-        pk = self.kwargs.get('pk')
-        if pk:
-            return Church.objects.filter(pk=pk, id=user_eglise.id)
-        
-        return Church.objects.filter(id=user_eglise.id)
-
+            pk = self.kwargs.get('pk')
+            if pk:
+                return Church.objects.filter(pk=pk)
+            return Church.objects.all()
+    
 
     def post(self, request, *args, **kwargs):
 
@@ -261,48 +258,74 @@ class Groupe_Offrandes_Mixins(
 # ======================== SORTE OFFRANDE =========================
 
 class Offrande_Mixins(
-    generics.GenericAPIView,
     mixins.CreateModelMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
-    mixins.ListModelMixin
+    mixins.ListModelMixin,
+    generics.GenericAPIView
 ):
- 
-    permission_classes = [IsAuthenticated, IsAbonnementValide]
-
-    queryset = Sorte_Offrande.objects.all()
+    permission_classes = [IsAuthenticated, IsSameChurch]
     serializer_class = Sorte_OffrandeSerializer
+    queryset = Sorte_Offrande.objects.all()
     lookup_field = 'pk'
-    
+
+    # def get_queryset(self):
+        
+    #     user_eglise = self.request.user.eglise
+    #     pk = self.kwargs.get('pk')
+    #     grp = self.kwargs.get('grp')
+
+    #     queryset = Sorte_Offrande.objects.filter(descript_recette__user__eglise=user_eglise)
+
+    #     if pk:
+    #         queryset = queryset.filter(pk=pk)
+    #     if grp:
+    #         queryset = queryset.filter(descript_recette__id=grp)
+
+    #     return queryset
 
     def get_queryset(self):
+        
+        user_eglise = self.request.user.eglise
         pk = self.kwargs.get('pk')
         grp = self.kwargs.get('grp')
-        if pk and grp:
-            return Sorte_Offrande.objects.filter(descript_recette__user__eglise__id=pk, descript_recette__id=grp)
+
+        queryset = Sorte_Offrande.objects.filter(
+            descript_recette__user__eglise=user_eglise
+        ).select_related('descript_recette')
+
         if pk:
-            return Sorte_Offrande.objects.filter(id=pk)
+            queryset = queryset.filter(pk=pk)
         if grp:
-            return Sorte_Offrande.objects.filter(descript_recette__id=grp)
-        return Sorte_Offrande.objects.all()
-    
+            queryset = queryset.filter(descript_recette__id=grp)
+
+        return queryset
+
+
     def get(self, request, *args, **kwargs):
+        
         pk = kwargs.get('pk')
-        grp = kwargs.get('grp')
+        if pk:
+            return self.retrieve(request, *args, **kwargs)
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        serializer = Sorte_OffrandeSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Offrande créée."})
-        return Response(serializer.errors, status=400)
+       
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Offrande créée avec succès.", "data": serializer.data},
+                        status=status.HTTP_201_CREATED)
 
     def put(self, request, *args, **kwargs):
+        
         return self.update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
+        """
+        Suppression d'une offrande.
+        """
         return self.destroy(request, *args, **kwargs)
     
 # ======================== GROUPE PREVISION =========================
@@ -417,20 +440,25 @@ class Payement_Offrande_Mixins(
     mixins.ListModelMixin
 ):
 
-    #permission_classes = [IsAuthenticated,]
+    permission_classes = [IsAuthenticated, IsSameChurch]
 
 
     queryset = Payement_Offrande.objects.all()
     serializer_class = PayementOffrandeSerializer
     lookup_field = 'pk'
     
-
     def get_queryset(self):
+        user_eglise = self.request.user.eglise
         pk = self.kwargs.get('pk')
+
+        queryset = Payement_Offrande.objects.filter(
+            nom_offrande__descript_recette__user__eglise=user_eglise
+        )
+
         if pk:
-            return Payement_Offrande.objects.filter(pk=pk)
-        return Payement_Offrande.objects.all()
-    
+            queryset = queryset.filter(pk=pk)
+
+        return queryset
 
 
     def get(self, request, *args, **kwargs):
@@ -460,32 +488,43 @@ class Payement_Offrande_Mixins(
 # ======================== AHADI =========================
 
 class Ahadi_Mixins(
-    generics.GenericAPIView,
     mixins.CreateModelMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
-    mixins.ListModelMixin
+    mixins.ListModelMixin,
+    generics.GenericAPIView
 ):
     queryset = Ahadi.objects.all()
     serializer_class = AhadiSerializer
     lookup_field = 'pk'
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsSameChurch]
 
-    def get(self, request, *args, **kwargs):
+    def get_queryset(self):
+        
+        user_eglise = self.request.user.eglise
+        pk = self.kwargs.get('pk')
 
-        pk = kwargs.get('pk')
-        engagements = self.get_queryset()
+        queryset = Ahadi.objects.filter(
+            nom_offrande__descript_recette__user__eglise=user_eglise
+        )
 
         if pk:
-            engagements = engagements.filter(pk=pk)
+            queryset = queryset.filter(pk=pk)
+
+        return queryset
+
+    def get(self, request, *args, **kwargs):
+        
+        engagements = self.get_queryset()
 
         paiements = (
             Payement_Offrande.objects.filter(
                 type_payement="in",
                 nom_offrande=OuterRef('nom_offrande'),
                 departement=OuterRef('nom_postnom'),
-                nom_offrande__descript_recette__description_recette="LES ENGAGEMENTS DES ADHERENTS"
+                nom_offrande__descript_recette__description_recette="LES ENGAGEMENTS DES ADHERENTS",
+                nom_offrande__descript_recette__user__eglise=request.user.eglise  # <-- filtre sécurité ajouté
             )
             .values('nom_offrande', 'departement')
             .annotate(total_paye=Sum('montant'))
@@ -503,12 +542,11 @@ class Ahadi_Mixins(
         return Response({"ahadi_data": serializer.data}, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
-        
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Ahadi créé avec succès."}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Ahadi créé avec succès.", "data": serializer.data},
+                        status=status.HTTP_201_CREATED)
 
     def put(self, request, *args, **kwargs):
         
@@ -518,8 +556,8 @@ class Ahadi_Mixins(
         
         return self.destroy(request, *args, **kwargs)
 
-
 # ======================== ETAT DE BESOIN =========================
+
 class EtatBesoin_Mixins(
     generics.GenericAPIView,
     mixins.CreateModelMixin,
@@ -686,36 +724,35 @@ class BilanAPIView(APIView):
 # =================== Rapport livre de caisse =======================================
 
 
-class LivreCaisseAPIView(APIView):
 
-    permission_classes = [IsAuthenticated, IsAbonnementValide]
+class LivreCaisseAPIView(APIView):
+    
+    permission_classes = [IsAuthenticated, IsAbonnementValide, IsSameChurch]
 
     def get(self, request):
-        search_query = request.GET.get('q', '').strip()
+        user_eglise = request.user.eglise  
 
-      
-        data_queryset = Payement_Offrande.objects.all().order_by('type_monaie', 'date_payement')
+        data_queryset = Payement_Offrande.objects.filter(
+            nom_offrande__descript_recette__user__eglise=user_eglise
+        ).order_by('type_monaie', 'date_payement')
 
-        
         cumulative_sums_by_currency = {}
-
         processed_data = []
 
         for item in data_queryset:
             monnaie = item.type_monaie
             montant = item.montant or 0
 
-            
+            # Initialise la devise si pas encore vue
             if monnaie not in cumulative_sums_by_currency:
                 cumulative_sums_by_currency[monnaie] = 0
 
-            
+            # Ajuste le cumul selon le type de paiement
             if item.type_payement == 'out':
                 cumulative_sums_by_currency[monnaie] -= montant
             else:
                 cumulative_sums_by_currency[monnaie] += montant
 
-            
             processed_data.append({
                 'id': item.id,
                 'date_payement': item.date_payement,
@@ -727,11 +764,7 @@ class LivreCaisseAPIView(APIView):
                 'cumulative_sum': cumulative_sums_by_currency[monnaie],
             })
 
-        response_data = {
-            'livre_caisse': processed_data,
-        }
-
-        return Response(response_data, status=status.HTTP_200_OK)
+        return Response({'livre_caisse': processed_data}, status=status.HTTP_200_OK)
 
 
 # =================== Rapport prevision =======================================
