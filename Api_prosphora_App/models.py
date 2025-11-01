@@ -5,6 +5,9 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
+from django.conf import settings
+
+
 
 
 
@@ -77,9 +80,6 @@ class App_user(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.num_phone
-
-from django.conf import settings
-from django.db import models
 
 
 # === Groupe Offrandes ===

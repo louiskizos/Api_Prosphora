@@ -566,101 +566,125 @@ class EtatBesoin_Mixins(
 
 # ======================== Rapport Bilan =========================   
 from decimal import Decimal
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, DecimalField, BigIntegerField
+from django.db.models.functions import Coalesce, ExtractYear, Cast
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Prevoir, Payement_Offrande
 
+from .models import Prevoir, Payement_Offrande
 
 class BilanAPIView(APIView):
 
     def get(self, request):
         prevision_qs = Prevoir.objects.select_related('descript_prevision')
-        paiement_qs = Payement_Offrande.objects.select_related('nom_offrande')
-
-        grouped = prevision_qs.values(
+        grouped_previsions = prevision_qs.annotate(
+            annee=ExtractYear('date_prevus')
+        ).values(
             'descript_prevision__num_ordre',
             'descript_prevision__description_prevision',
-            'date_prevus'
+            'annee'
         ).annotate(
-            total_prevus=Sum('montant_prevus')
-        ).order_by('descript_prevision__num_ordre', 'date_prevus')
+            total_prevus=Coalesce(Sum('montant_prevus'), Decimal('0.00'), output_field=DecimalField())
+        ).order_by('descript_prevision__num_ordre', 'annee')
 
         combined_data = []
 
-        for group in grouped:
+        paiement_qs = Payement_Offrande.objects.select_related('nom_offrande').annotate(
+            annee_payement=ExtractYear('date_payement'),
+            compte_rapprochement=Cast('nom_offrande__num_compte', output_field=BigIntegerField())
+        )
+
+        paiement_totals_by_currency = paiement_qs.values(
+            'compte_rapprochement',
+            'annee_payement',
+            'type_monaie',
+            'nom_offrande__nom_offrande'
+        ).annotate(
+            total_recette=Coalesce(
+                Sum('montant', filter=Q(type_payement='in')),
+                Decimal('0.00'),
+                output_field=DecimalField()
+            ),
+            total_depense=Coalesce(
+                Sum('montant', filter=Q(type_payement='out')),
+                Decimal('0.00'),
+                output_field=DecimalField()
+            ),
+        )
+
+        payments_dict = {}
+        for item in paiement_totals_by_currency:
+            key = (item['compte_rapprochement'], item['annee_payement'])
+            if key not in payments_dict:
+                payments_dict[key] = {
+                    'libelle': item['nom_offrande__nom_offrande'],
+                    'par_devise': {}
+                }
+            devise = item['type_monaie']
+            payments_dict[key]['par_devise'][devise] = {
+                'recette': item['total_recette'],
+                'depense': item['total_depense']
+            }
+
+        for group in grouped_previsions:
             num_ordre = group['descript_prevision__num_ordre']
-            raw_date = group['date_prevus']
+            annee = group['annee']
 
-            # gestion des dates (string ou date)
-            if isinstance(raw_date, str):
-                from django.utils.dateparse import parse_date
-                date_prevus = parse_date(raw_date)
-            else:
-                date_prevus = raw_date
-
-            annee = date_prevus.year
-
-            related_data = prevision_qs.filter(
+            related_previsions = prevision_qs.filter(
                 descript_prevision__num_ordre=num_ordre,
                 date_prevus__year=annee
             ).values('nom_prevision', 'num_compte', 'montant_prevus')
 
-            num_comptes = [str(c) for c in related_data.values_list('num_compte', flat=True)]
+            num_comptes = list({int(c) for c in related_previsions.values_list('num_compte', flat=True)})
 
-            pay_qs_filtered = paiement_qs.filter(
-                nom_offrande__num_compte__in=num_comptes,
-                date_payement__year=annee
-            )
+            prevision_list = []
+            paiement_list = []
 
+            current_totals = {'recettes': {}, 'depenses': {}}
 
-            pay_grouped = pay_qs_filtered.values(
-                'nom_offrande__num_compte',
-                'nom_offrande__nom_offrande'
-            ).annotate(
-                total_recette=Sum('montant', filter=Q(type_payement='in')),
-                total_depense=Sum('montant', filter=Q(type_payement='out')),
-            )
+            for item in related_previsions:
+                prevision_list.append({
+                    'libelle': item['nom_prevision'],
+                    'num_compte': item['num_compte'],
+                    'recette': '-',
+                    'depense': '-',
+                    'prevision': item['montant_prevus'],
+                })
 
-            prevision_list = [{
-                'libelle': item['nom_prevision'],
-                'num_compte': item['num_compte'],
-                'recette': '-',
-                'depense': '-',
-                'prevision': item['montant_prevus'],
-            } for item in related_data]
+            for compte in num_comptes:
+                key = (compte, annee)
+                payment_data = payments_dict.get(key)
+                if payment_data:
+                    for devise, totaux in payment_data['par_devise'].items():
+                        recette = totaux['recette']
+                        depense = totaux['depense']
+                        if recette > 0 or depense > 0:
+                            paiement_list.append({
+                                'libelle': f"{payment_data['libelle']} ({devise})",
+                                'num_compte': compte,
+                                'recette': recette,
+                                'depense': depense,
+                                'prevision': '-',
+                            })
+                            current_totals['recettes'][devise] = current_totals['recettes'].get(devise, Decimal('0.00')) + recette
+                            current_totals['depenses'][devise] = current_totals['depenses'].get(devise, Decimal('0.00')) + depense
 
-            paiement_list = [{
-                'libelle': item['nom_offrande__nom_offrande'],
-                'num_compte': item['nom_offrande__num_compte'],
-                'recette': item['total_recette'] or '-',
-                'depense': item['total_depense'] or '-',
-                'prevision': '-',
-            } for item in pay_grouped]
-
-            total_recettes = sum(
-                [p['recette'] if p['recette'] != '-' else 0 for p in paiement_list],
-                Decimal(0)
-            )
-            total_depenses = sum(
-                [p['depense'] if p['depense'] != '-' else 0 for p in paiement_list],
-                Decimal(0)
-            )
+            def format_totals(total_dict):
+                return {devise: montant for devise, montant in total_dict.items() if montant > 0}
 
             combined_data.append({
                 'num_ordre': num_ordre,
                 'description_prevision': group['descript_prevision__description_prevision'],
                 'annee_prevus': annee,
-                'total_prevus': group['total_prevus'] or 0,
-                'total_recettes': total_recettes,
-                'total_depenses': total_depenses,
+                'total_prevus': group['total_prevus'],
+                'total_recettes_par_devise': format_totals(current_totals['recettes']),
+                'total_depenses_par_devise': format_totals(current_totals['depenses']),
                 'lignes': prevision_list + paiement_list
             })
 
-        context = {'bilan_data': combined_data}
-        return Response(context, status=status.HTTP_200_OK)
-
+        return Response({'bilan_data': combined_data}, status=status.HTTP_200_OK)
+    
 # =================== Rapport livre de caisse =======================================
 
 
