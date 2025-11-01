@@ -270,20 +270,6 @@ class Offrande_Mixins(
     queryset = Sorte_Offrande.objects.all()
     lookup_field = 'pk'
 
-    # def get_queryset(self):
-        
-    #     user_eglise = self.request.user.eglise
-    #     pk = self.kwargs.get('pk')
-    #     grp = self.kwargs.get('grp')
-
-    #     queryset = Sorte_Offrande.objects.filter(descript_recette__user__eglise=user_eglise)
-
-    #     if pk:
-    #         queryset = queryset.filter(pk=pk)
-    #     if grp:
-    #         queryset = queryset.filter(descript_recette__id=grp)
-
-    #     return queryset
 
     def get_queryset(self):
         

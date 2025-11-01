@@ -4,13 +4,30 @@ from .models import Church, Abonnement, User
 from django.contrib.auth import authenticate
 
 from .models import *
+from rest_framework import serializers
 
-# Sérialiseur pour Payement_Offrande
+
+
+
+
 class PayementOffrandeSerializer(serializers.ModelSerializer):
+    num_compte = serializers.CharField(source='nom_offrande.num_compte', read_only=True)
+    nom_offrande_nom = serializers.CharField(source='nom_offrande.nom_offrande', read_only=True)
+
     class Meta:
         model = Payement_Offrande
-        #fields = ['nom_offrande', 'departement', 'montant', 'date_payement', 'annee']
-        fields = '__all__'
+        fields = '__all__'  
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        request = self.context.get('request', None)
+        if request and hasattr(request, "user"):
+            user = request.user
+            # On limite les choix de nom_offrande à ceux de l’église du user connecté
+            self.fields['nom_offrande'].queryset = Sorte_Offrande.objects.filter(
+                descript_recette__user__eglise=user.eglise
+            )
 
 
 # Sérialiseur pour Prevoir
@@ -75,10 +92,26 @@ class Groupe_OffrandesSerializer(serializers.ModelSerializer):
         model = Groupe_Offrandes
         fields = '__all__'
 
+
 class Sorte_OffrandeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sorte_Offrande
         fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        request = self.context.get('request', None)
+        if request and hasattr(request, "user"):
+            user = request.user
+            
+            self.fields['descript_recette'].queryset = (
+                self.fields['descript_recette'].queryset.filter(
+                    user__eglise=user.eglise
+                )
+            )
+
+
 
 class Groupe_PrevisionsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -92,11 +125,6 @@ class PrevoirSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-# class AhadiSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Ahadi
-#         fields = '__all__'
-# serializers.py
 
 class AhadiSerializer(serializers.ModelSerializer):
     total_paye = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
