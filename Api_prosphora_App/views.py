@@ -565,6 +565,13 @@ class EtatBesoin_Mixins(
         return self.destroy(request, *args, **kwargs)
 
 # ======================== Rapport Bilan =========================   
+from decimal import Decimal
+from django.db.models import Sum, Q
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Prevoir, Payement_Offrande
+
 
 class BilanAPIView(APIView):
 
@@ -576,13 +583,17 @@ class BilanAPIView(APIView):
             'descript_prevision__num_ordre',
             'descript_prevision__description_prevision',
             'date_prevus'
-        ).annotate(total_prevus=Sum('montant_prevus')).order_by('descript_prevision__num_ordre', 'date_prevus')
+        ).annotate(
+            total_prevus=Sum('montant_prevus')
+        ).order_by('descript_prevision__num_ordre', 'date_prevus')
 
         combined_data = []
+
         for group in grouped:
             num_ordre = group['descript_prevision__num_ordre']
             raw_date = group['date_prevus']
 
+            # gestion des dates (string ou date)
             if isinstance(raw_date, str):
                 from django.utils.dateparse import parse_date
                 date_prevus = parse_date(raw_date)
@@ -593,13 +604,16 @@ class BilanAPIView(APIView):
 
             related_data = prevision_qs.filter(
                 descript_prevision__num_ordre=num_ordre,
-                date_prevus__year=annee  # filtrage par année corrigé ici
+                date_prevus__year=annee
             ).values('nom_prevision', 'num_compte', 'montant_prevus')
 
+            num_comptes = [str(c) for c in related_data.values_list('num_compte', flat=True)]
+
             pay_qs_filtered = paiement_qs.filter(
-                nom_offrande__descript_recette__num_ordre=num_ordre,
+                nom_offrande__num_compte__in=num_comptes,
                 date_payement__year=annee
             )
+
 
             pay_grouped = pay_qs_filtered.values(
                 'nom_offrande__num_compte',
@@ -626,10 +640,12 @@ class BilanAPIView(APIView):
             } for item in pay_grouped]
 
             total_recettes = sum(
-                [p['recette'] if p['recette'] != '-' else 0 for p in paiement_list], Decimal(0)
+                [p['recette'] if p['recette'] != '-' else 0 for p in paiement_list],
+                Decimal(0)
             )
             total_depenses = sum(
-                [p['depense'] if p['depense'] != '-' else 0 for p in paiement_list], Decimal(0)
+                [p['depense'] if p['depense'] != '-' else 0 for p in paiement_list],
+                Decimal(0)
             )
 
             combined_data.append({
@@ -642,10 +658,7 @@ class BilanAPIView(APIView):
                 'lignes': prevision_list + paiement_list
             })
 
-        context = {
-            'bilan_data': combined_data
-        }
-
+        context = {'bilan_data': combined_data}
         return Response(context, status=status.HTTP_200_OK)
 
 # =================== Rapport livre de caisse =======================================
@@ -654,33 +667,42 @@ class BilanAPIView(APIView):
 class LivreCaisseAPIView(APIView):
 
     def get(self, request):
-        
         search_query = request.GET.get('q', '').strip()
 
-        data_queryset = Payement_Offrande.objects.all().order_by('nom_offrande')
+        # On trie par type_monaie et date (plus logique pour les cumuls)
+        data_queryset = Payement_Offrande.objects.all().order_by('type_monaie', 'date_payement')
 
-        cumulative_sums = []
-        current_sum = 0
-
-        for item in data_queryset:
-            if item.type_payement == 'out':
-                current_sum -= item.montant or 0
-            else:
-                current_sum += item.montant or 0
-            cumulative_sums.append(current_sum)
+        # Dictionnaire pour stocker les cumuls par type de monnaie
+        cumulative_sums_by_currency = {}
 
         processed_data = []
-        for i, item in enumerate(data_queryset):
+
+        for item in data_queryset:
+            monnaie = item.type_monaie
+            montant = item.montant or 0
+
+            # Initialiser le cumul si la monnaie n'existe pas encore
+            if monnaie not in cumulative_sums_by_currency:
+                cumulative_sums_by_currency[monnaie] = 0
+
+            # Ajouter ou soustraire selon le type de paiement
+            if item.type_payement == 'out':
+                cumulative_sums_by_currency[monnaie] -= montant
+            else:
+                cumulative_sums_by_currency[monnaie] += montant
+
+            # Ajouter l’élément traité
             processed_data.append({
                 'id': item.id,
                 'date_payement': item.date_payement,
                 'nom_offrande': str(item.nom_offrande),
-                'num_compte' : str(item.nom_offrande.num_compte),
+                'num_compte': str(item.nom_offrande.num_compte),
                 'type_payement': item.type_payement,
-                'type_monaie' : item.type_monaie,    
-                'montant': item.montant,
-                'cumulative_sum': cumulative_sums[i],
+                'type_monaie': monnaie,
+                'montant': montant,
+                'cumulative_sum': cumulative_sums_by_currency[monnaie],
             })
+
         response_data = {
             'livre_caisse': processed_data,
         }
