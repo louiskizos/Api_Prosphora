@@ -14,6 +14,67 @@ from decimal import Decimal
 from django.db.models.functions import Coalesce, ExtractYear, Cast
 
 
+import subprocess
+import os
+from datetime import datetime
+from django.conf import settings
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.http import FileResponse
+
+class BackupPostgresAPIView(APIView):
+
+    def post(self, request):
+        db_config = settings.DATABASES['default']
+        USER = db_config['USER']
+        PASSWORD = db_config['PASSWORD']
+        HOST = db_config['HOST']
+        PORT = db_config.get('PORT', '5432')
+        DATABASE = db_config['NAME']
+
+        DATE = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        BACKUP_FILE = f"/tmp/backup_{DATE}.sql"
+
+        try:
+            # Variables d'environnement pour pg_dump
+            env = os.environ.copy()
+            env["PGPASSWORD"] = PASSWORD
+            env["PGSSLMODE"] = "require"  # Obligatoire pour Render External
+
+            # Lancer pg_dump
+            subprocess.run(
+                [
+                    "pg_dump",
+                    "-h", HOST,
+                    "-p", PORT,
+                    "-U", USER,
+                    "-F", "c",  # format custom
+                    "-f", BACKUP_FILE,
+                    DATABASE
+                ],
+                check=True,
+                env=env
+            )
+
+            # Envoyer le fichier directement au client
+            response = FileResponse(
+                open(BACKUP_FILE, 'rb'),
+                as_attachment=True,
+                filename=f"backup_{DATE}.sql"
+            )
+            return response
+
+        except subprocess.CalledProcessError as e:
+            return Response(
+                {"status": "error", "message": f"Erreur lors du backup : {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        finally:
+            # Nettoyer le fichier sur le serveur après l'envoi
+            if os.path.exists(BACKUP_FILE):
+                os.remove(BACKUP_FILE)
+
 
 class Register_Mixins(
     generics.GenericAPIView,
@@ -152,7 +213,7 @@ class Abonnement_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated]
+   #permission_classes = [IsAuthenticated]
 
 
     queryset = Abonnement.objects.all()
@@ -211,7 +272,7 @@ class Groupe_Offrandes_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated]
+   #permission_classes = [IsAuthenticated]
 
 
     queryset = Groupe_Offrandes.objects.all()
@@ -258,7 +319,7 @@ class Offrande_Mixins(
     mixins.ListModelMixin,
     generics.GenericAPIView
 ):
-    permission_classes = [IsAuthenticated, IsSameChurch]
+  # permission_classes = [IsAuthenticated, IsSameChurch]
     serializer_class = Sorte_OffrandeSerializer
     queryset = Sorte_Offrande.objects.all()
     lookup_field = 'pk'
@@ -317,7 +378,7 @@ class Groupe_Previsions_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated, IsSameChurch]
+   #permission_classes = [IsAuthenticated, IsSameChurch]
 
 
     queryset = Groupe_Previsions.objects.all()
@@ -368,7 +429,7 @@ class Prevoir_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated, IsSameChurch]
+  # permission_classes = [IsAuthenticated, IsSameChurch]
 
 
     queryset = Prevoir.objects.all()
@@ -422,7 +483,7 @@ class Payement_Offrande_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated, IsSameChurch]
+ #  permission_classes = [IsAuthenticated, IsSameChurch]
 
 
     queryset = Payement_Offrande.objects.all()
@@ -480,7 +541,7 @@ class Ahadi_Mixins(
     queryset = Ahadi.objects.all()
     serializer_class = AhadiSerializer
     lookup_field = 'pk'
-    permission_classes = [IsAuthenticated, IsSameChurch]
+  # permission_classes = [IsAuthenticated, IsSameChurch]
 
     def get_queryset(self):
         
@@ -549,7 +610,7 @@ class EtatBesoin_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated, IsAbonnementValide]
+  # permission_classes = [IsAuthenticated, IsAbonnementValide]
 
 
     queryset = EtatBesoin.objects.all()
@@ -594,7 +655,7 @@ class EtatBesoin_Mixins(
 
 class BilanAPIView(APIView):
 
-    permission_classes = [IsAuthenticated]
+  # permission_classes = [IsAuthenticated]
 
     def get(self, request):
         prevision_qs = Prevoir.objects.select_related('descript_prevision')
@@ -711,7 +772,7 @@ class BilanAPIView(APIView):
 
 class LivreCaisseAPIView(APIView):
     
-    permission_classes = [IsAuthenticated, IsAbonnementValide, IsSameChurch]
+  # permission_classes = [IsAuthenticated, IsAbonnementValide, IsSameChurch]
 
     def get(self, request):
         user_eglise = request.user.eglise  
@@ -752,7 +813,7 @@ class LivreCaisseAPIView(APIView):
 # =================== Rapport prevision =======================================
 class RapportPrevisionAPIView(APIView):
 
-    permission_classes = [IsAuthenticated, IsAbonnementValide, IsSameChurch]
+  # permission_classes = [IsAuthenticated, IsAbonnementValide, IsSameChurch]
 
     def get(self, request):
         user_eglise = request.user.eglise  

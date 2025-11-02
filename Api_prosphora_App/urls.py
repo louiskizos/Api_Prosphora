@@ -73,4 +73,7 @@ urlpatterns = [
 # =========== Rapport Prevision =========================
     path('rapport_prevision/', RapportPrevisionAPIView.as_view(), name='rapport_prevision'),
 
+# =========== Backup Database =========================
+    path('backup_database/', BackupPostgresAPIView.as_view(), name='backup_database'),
+
 ]
