@@ -270,7 +270,7 @@ class Groupe_Offrandes_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated]
+ #  permission_classes = [IsAuthenticated]
 
 
     queryset = Groupe_Offrandes.objects.all()
@@ -280,6 +280,11 @@ class Groupe_Offrandes_Mixins(
 
     def get_queryset(self):
         user_eglise = self.request.user.eglise
+        eglise_id = self.kwargs.get('eglise_id')
+
+        if eglise_id:
+            return Groupe_Offrandes.objects.filter(user__eglise_id=eglise_id)
+        
         return Groupe_Offrandes.objects.filter(user__eglise=user_eglise)
 
 
@@ -341,7 +346,6 @@ class Offrande_Mixins(
                 descript_recette__user__eglise=user.eglise
             ).select_related('descript_recette')
 
-        # 3️⃣ Application des filtres supplémentaires
         if pk:
             queryset = queryset.filter(pk=pk)
         if grp:
@@ -790,7 +794,7 @@ class BilanAPIView(APIView):
 
 
 class LivreCaisseAPIView(APIView):
-    
+
     def get(self, request, *args, **kwargs):
         user_eglise = request.user.eglise
         eglise_id = kwargs.get('eglise_id')  # récupère l'ID depuis l'URL si présent

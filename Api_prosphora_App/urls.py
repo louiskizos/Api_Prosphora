@@ -21,7 +21,7 @@ urlpatterns = [
     path('liste_abonnement_par_eglise/<int:pk>/', Abonnement_Mixins.as_view(), name='liste_abonnement_par_eglise'),
 
 # ============= Groupe des offrandes ====================
-    path('groupe_offrande/', Groupe_Offrandes_Mixins.as_view(), name='create-groupe_offrande'),
+    path('groupe_offrande/<int:eglise_id>/', Groupe_Offrandes_Mixins.as_view(), name='create-groupe_offrande'),
     path('delete_groupe_offrande/<str:pk>/', Groupe_Offrandes_Mixins.as_view(), name='delete_groupe_offrande'),
     path('update_groupe_offrande/<str:pk>/', Groupe_Offrandes_Mixins.as_view(), name='update_groupe_offrande'),
 
