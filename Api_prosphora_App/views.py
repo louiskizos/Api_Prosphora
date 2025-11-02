@@ -137,6 +137,7 @@ class LoginView(APIView):
                 "num_phone": user.num_phone,
                 "role": user.role,
                 "eglise": user.eglise.nom if user.eglise else None,
+                "id_eglise": user.eglise.id if user.eglise else None,
                 "abonnement_mois": dernier_abonnement.mois if dernier_abonnement else None,
                 "abonnement_date": dernier_abonnement.date if dernier_abonnement else None
             })
@@ -316,22 +317,31 @@ class Offrande_Mixins(
     mixins.ListModelMixin,
     generics.GenericAPIView
 ):
-    permission_classes = [IsAuthenticated, IsSameChurch]
+  # permission_classes = [IsAuthenticated, IsSameChurch]
     serializer_class = Sorte_OffrandeSerializer
     queryset = Sorte_Offrande.objects.all()
     lookup_field = 'pk'
 
 
     def get_queryset(self):
-        
-        user_eglise = self.request.user.eglise
+        user = self.request.user
         pk = self.kwargs.get('pk')
         grp = self.kwargs.get('grp')
 
-        queryset = Sorte_Offrande.objects.filter(
-            descript_recette__user__eglise=user_eglise
-        ).select_related('descript_recette')
+        eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
 
+        if eglise_id:
+
+            queryset = Sorte_Offrande.objects.filter(
+                descript_recette__user__eglise_id=eglise_id
+            ).select_related('descript_recette')
+        else:
+
+            queryset = Sorte_Offrande.objects.filter(
+                descript_recette__user__eglise=user.eglise
+            ).select_related('descript_recette')
+
+        # 3️⃣ Application des filtres supplémentaires
         if pk:
             queryset = queryset.filter(pk=pk)
         if grp:
@@ -436,10 +446,12 @@ class Prevoir_Mixins(
 
     def get_queryset(self):
         user = self.request.user
+        eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
 
+        if eglise_id:
+            return Prevoir.objects.filter(descript_prevision__user__eglise_id=eglise_id)
         if not hasattr(user, "eglise") or user.eglise is None:
             return Prevoir.objects.none()
-
         return Prevoir.objects.filter(descript_prevision__user__eglise=user.eglise)
 
 
@@ -539,16 +551,23 @@ class Ahadi_Mixins(
     serializer_class = AhadiSerializer
     lookup_field = 'pk'
 
-    permission_classes = [IsAuthenticated, IsSameChurch]
+   #permission_classes = [IsAuthenticated, IsSameChurch]
 
     def get_queryset(self):
-        
-        user_eglise = self.request.user.eglise
+        user = self.request.user
         pk = self.kwargs.get('pk')
 
-        queryset = Ahadi.objects.filter(
-            nom_offrande__descript_recette__user__eglise=user_eglise
-        )
+        eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
+
+        if eglise_id:
+            queryset = Ahadi.objects.filter(
+                nom_offrande__descript_recette__user__eglise_id=eglise_id
+            )
+        else:
+
+            queryset = Ahadi.objects.filter(
+                nom_offrande__descript_recette__user__eglise=user.eglise
+            )
 
         if pk:
             queryset = queryset.filter(pk=pk)
@@ -608,7 +627,7 @@ class EtatBesoin_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated, IsAbonnementValide]
+  # permission_classes = [IsAuthenticated, IsAbonnementValide]
 
 
     queryset = EtatBesoin.objects.all()
@@ -618,10 +637,12 @@ class EtatBesoin_Mixins(
 
     def get_queryset(self):
         user = self.request.user
+        eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
 
+        if eglise_id:
+            return EtatBesoin.objects.filter(user__eglise_id=eglise_id)
         if not hasattr(user, "eglise") or user.eglise is None:
             return EtatBesoin.objects.none()
-
         return EtatBesoin.objects.filter(user__eglise=user.eglise)
 
 
@@ -770,14 +791,18 @@ class BilanAPIView(APIView):
 
 class LivreCaisseAPIView(APIView):
     
-    permission_classes = [IsAuthenticated, IsAbonnementValide, IsSameChurch]
+    def get(self, request, *args, **kwargs):
+        user_eglise = request.user.eglise
+        eglise_id = kwargs.get('eglise_id')  # récupère l'ID depuis l'URL si présent
 
-    def get(self, request):
-        user_eglise = request.user.eglise  
-
-        data_queryset = Payement_Offrande.objects.filter(
-            nom_offrande__descript_recette__user__eglise=user_eglise
-        ).order_by('type_monaie', 'date_payement')
+        if eglise_id:
+            data_queryset = Payement_Offrande.objects.filter(
+                nom_offrande__descript_recette__user__eglise_id=eglise_id
+            ).order_by('type_monaie', 'date_payement')
+        else:
+            data_queryset = Payement_Offrande.objects.filter(
+                nom_offrande__descript_recette__user__eglise=user_eglise
+            ).order_by('type_monaie', 'date_payement')
 
         cumulative_sums_by_currency = {}
         processed_data = []
@@ -785,15 +810,11 @@ class LivreCaisseAPIView(APIView):
         for item in data_queryset:
             monnaie = item.type_monaie
             montant = item.montant or 0
-
-            if monnaie not in cumulative_sums_by_currency:
-                cumulative_sums_by_currency[monnaie] = 0
-
+            cumulative_sums_by_currency[monnaie] = cumulative_sums_by_currency.get(monnaie, 0)
             if item.type_payement == 'out':
                 cumulative_sums_by_currency[monnaie] -= montant
             else:
                 cumulative_sums_by_currency[monnaie] += montant
-
             processed_data.append({
                 'id': item.id,
                 'date_payement': item.date_payement,
@@ -805,7 +826,7 @@ class LivreCaisseAPIView(APIView):
                 'cumulative_sum': cumulative_sums_by_currency[monnaie],
             })
 
-        return Response({'livre_caisse': processed_data}, status=status.HTTP_200_OK)
+        return Response({'livre_caisse': processed_data}, status=200)
 
 
 # =================== Rapport prevision =======================================

@@ -27,7 +27,8 @@ urlpatterns = [
 
 # ============= Sorte_Offrande ====================
 
-    path('offrande/', Offrande_Mixins.as_view(), name='create-offrande'),
+ #  path('offrande/', Offrande_Mixins.as_view(), name='create-offrande'),
+    path('offrande/<int:eglise_id>/', Offrande_Mixins.as_view(), name='offrande'),
     path('delete_offrande/<int:pk>/', Offrande_Mixins.as_view(), name='delete_offrande'),
     path('update_offrande/<int:pk>/', Offrande_Mixins.as_view(), name='update_offrande'),
     path('liste_offrande_par_eglise/<int:pk>/', Offrande_Mixins.as_view(), name='liste_offrande_par_eglise'),
@@ -46,7 +47,7 @@ urlpatterns = [
     path('delete_groupe_prevision/<str:pk>/', Groupe_Previsions_Mixins.as_view(), name='delete_groupe_prevision'),
     path('update_groupe_prevision/<str:pk>/', Groupe_Previsions_Mixins.as_view(), name='update_groupe_prevision'),
 # ============= Prevoir ====================
-    path('prevoir/', Prevoir_Mixins.as_view(), name='create-prevoir'),
+    path('prevoir/<int:eglise_id>/', Prevoir_Mixins.as_view(), name='create-prevoir'),
     path('delete_prevoir/<str:pk>/', Prevoir_Mixins.as_view(), name='delete_prevoir'),
     path('update_prevoir/<str:pk>/', Prevoir_Mixins.as_view(), name='update_prevoir'),
     path('liste_prevoir_par_eglise/<int:pk>/', Prevoir_Mixins.as_view(), name='liste_prevoir_par_eglise'),
@@ -54,12 +55,12 @@ urlpatterns = [
 
 
 # ============= Ahadi ====================
-    path('ahadi/', Ahadi_Mixins.as_view(), name='create-ahadi'),
+    path('ahadi/<int:eglise_id>/', Ahadi_Mixins.as_view(), name='create-ahadi'),
     path('delete_ahadi/<str:pk>/', Ahadi_Mixins.as_view(), name='delete_ahadi'),
     path('update_ahadi/<str:pk>/', Ahadi_Mixins.as_view(), name='update_ahadi'),
 
 # ============ Etat de besoin ===============
-    path('etat_besoin/', EtatBesoin_Mixins.as_view(), name='create-etat_besoin'),
+    path('etat_besoin/<int:eglise_id>/', EtatBesoin_Mixins.as_view(), name='create-etat_besoin'),
     path('delete_etat_besoin/<str:pk>/', EtatBesoin_Mixins.as_view(), name='delete_etat_besoin'),
     path('update_etat_besoin/<str:pk>/', EtatBesoin_Mixins.as_view(), name='update_etat_besoin'),
 
@@ -68,7 +69,7 @@ urlpatterns = [
     path('bilan/', BilanAPIView.as_view(), name='bilan'),
 
 # ============= Livre de caisse =========================
-    path('livre_caisse/', LivreCaisseAPIView.as_view(), name='livre_caisse'),
+    path('livre_caisse/<int:eglise_id>/', LivreCaisseAPIView.as_view(), name='livre_caisse'),
 
 # =========== Rapport Prevision =========================
     path('rapport_prevision/', RapportPrevisionAPIView.as_view(), name='rapport_prevision'),
