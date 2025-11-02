@@ -75,6 +75,12 @@ CORS_EXPOSE_HEADERS = [
     'Content-Type',
     'Authorization'
     ]
+# settings.py
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5153"# ton frontend React
+]
+
 
 TEMPLATES = [
     {
