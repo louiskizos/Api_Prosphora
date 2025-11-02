@@ -133,6 +133,10 @@ class Ahadi(models.Model):
     motif = models.CharField(max_length=255)
     type_monaie = models.CharField(max_length=100, default="CDF")
     date_ahadi = models.DateField()
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE, default="1"
+    )
   
     
 
@@ -150,7 +154,10 @@ class EtatBesoin(models.Model):
     date_etat_besoin = models.DateField(auto_now_add=True)
     validation_pasteur = models.BooleanField(default=False)
     validation_caisse = models.BooleanField(default=False)
-
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE, default="1"
+    )
     def __str__(self):
         return self.service
 
@@ -164,7 +171,10 @@ class Groupe_Previsions(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     num_ordre = models.CharField(max_length=100)
     description_prevision = models.CharField(max_length=100)
-    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE, default="1"
+    )
     def __str__(self):
         return self.num_ordre
 

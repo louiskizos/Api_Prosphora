@@ -1,10 +1,6 @@
 from rest_framework import serializers
-from rest_framework import serializers
-from .models import Church, Abonnement, User
 from django.contrib.auth import authenticate
-
 from .models import *
-from rest_framework import serializers
 
 
 
@@ -124,6 +120,19 @@ class PrevoirSerializer(serializers.ModelSerializer):
         model = Prevoir
         fields = '__all__'
 
+    def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+            request = self.context.get('request', None)
+            if request and hasattr(request, "user"):
+                user = request.user
+
+                if hasattr(user, "eglise") and user.eglise:
+                    self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.filter(
+                        user__eglise=user.eglise
+                    )
+                else:
+                    self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.none()
 
 
 class AhadiSerializer(serializers.ModelSerializer):
@@ -132,7 +141,20 @@ class AhadiSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ahadi
-        fields = '__all__'  
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        request = self.context.get('request', None)
+        if request and hasattr(request, "user"):
+            user = request.user
+            self.fields['nom_offrande'].queryset = (
+                self.fields['nom_offrande'].queryset.filter(
+                    descript_recette__user__eglise=user.eglise
+                )
+            )
+
 
 class EtatBesoinSerializer(serializers.ModelSerializer):
     class Meta:

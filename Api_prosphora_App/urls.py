@@ -1,5 +1,4 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import *
 
 urlpatterns = [
@@ -67,7 +66,11 @@ urlpatterns = [
 
 # ============= Bilan ====================
     path('bilan/', BilanAPIView.as_view(), name='bilan'),
+
 # ============= Livre de caisse =========================
     path('livre_caisse/', LivreCaisseAPIView.as_view(), name='livre_caisse'),
+
+# =========== Rapport Prevision =========================
+    path('rapport_prevision/', RapportPrevisionAPIView.as_view(), name='rapport_prevision'),
 
 ]

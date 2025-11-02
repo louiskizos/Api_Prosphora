@@ -1,6 +1,5 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
 from .serializer import *
 from .models import *
 from rest_framework import generics, mixins
@@ -221,12 +220,6 @@ class Groupe_Offrandes_Mixins(
     
 
     def get_queryset(self):
-        pk = self.kwargs.get('pk')
-        if pk:
-            return Groupe_Offrandes.objects.filter(pk=pk)
-        return Groupe_Offrandes.objects.all()
-    
-    def get_queryset(self):
         user_eglise = self.request.user.eglise
         return Groupe_Offrandes.objects.filter(user__eglise=user_eglise)
 
@@ -324,7 +317,7 @@ class Groupe_Previsions_Mixins(
     mixins.ListModelMixin
 ):
 
-    #permission_classes = [IsAuthenticated,]
+    permission_classes = [IsAuthenticated, IsSameChurch]
 
 
     queryset = Groupe_Previsions.objects.all()
@@ -333,11 +326,12 @@ class Groupe_Previsions_Mixins(
     
 
     def get_queryset(self):
-        pk = self.kwargs.get('pk')
-        if pk:
-            return Groupe_Previsions.objects.filter(pk=pk)
-        return Groupe_Previsions.objects.all()
-    
+        user = self.request.user
+
+        if not hasattr(user, "eglise") or user.eglise is None:
+            return Groupe_Previsions.objects.none()
+
+        return Groupe_Previsions.objects.filter(user__eglise=user.eglise)
 
 
     def get(self, request, *args, **kwargs):
@@ -374,7 +368,7 @@ class Prevoir_Mixins(
     mixins.ListModelMixin
 ):
 
-    #permission_classes = [IsAuthenticated,]
+    permission_classes = [IsAuthenticated, IsSameChurch]
 
 
     queryset = Prevoir.objects.all()
@@ -383,11 +377,13 @@ class Prevoir_Mixins(
     
 
     def get_queryset(self):
-        pk = self.kwargs.get('pk')
-        if pk:
-            return Prevoir.objects.filter(pk=pk)
-        return Prevoir.objects.all()
-    
+        user = self.request.user
+
+        if not hasattr(user, "eglise") or user.eglise is None:
+            return Prevoir.objects.none()
+
+        return Prevoir.objects.filter(descript_prevision__user__eglise=user.eglise)
+
 
 
     def get(self, request, *args, **kwargs):
@@ -510,7 +506,7 @@ class Ahadi_Mixins(
                 nom_offrande=OuterRef('nom_offrande'),
                 departement=OuterRef('nom_postnom'),
                 nom_offrande__descript_recette__description_recette="LES ENGAGEMENTS DES ADHERENTS",
-                nom_offrande__descript_recette__user__eglise=request.user.eglise  # <-- filtre sécurité ajouté
+                nom_offrande__descript_recette__user__eglise=request.user.eglise 
             )
             .values('nom_offrande', 'departement')
             .annotate(total_paye=Sum('montant'))
@@ -562,11 +558,13 @@ class EtatBesoin_Mixins(
     
 
     def get_queryset(self):
-        pk = self.kwargs.get('pk')
-        if pk:
-            return EtatBesoin.objects.filter(pk=pk)
-        return EtatBesoin.objects.all()
-    
+        user = self.request.user
+
+        if not hasattr(user, "eglise") or user.eglise is None:
+            return EtatBesoin.objects.none()
+
+        return EtatBesoin.objects.filter(user__eglise=user.eglise)
+
 
 
     def get(self, request, *args, **kwargs):
@@ -729,11 +727,9 @@ class LivreCaisseAPIView(APIView):
             monnaie = item.type_monaie
             montant = item.montant or 0
 
-            # Initialise la devise si pas encore vue
             if monnaie not in cumulative_sums_by_currency:
                 cumulative_sums_by_currency[monnaie] = 0
 
-            # Ajuste le cumul selon le type de paiement
             if item.type_payement == 'out':
                 cumulative_sums_by_currency[monnaie] -= montant
             else:
@@ -754,3 +750,53 @@ class LivreCaisseAPIView(APIView):
 
 
 # =================== Rapport prevision =======================================
+class RapportPrevisionAPIView(APIView):
+
+    permission_classes = [IsAuthenticated, IsAbonnementValide, IsSameChurch]
+
+    def get(self, request):
+        user_eglise = request.user.eglise  
+
+        prevision_qs = Prevoir.objects.select_related('descript_prevision').filter(
+            descript_prevision__user__eglise=user_eglise
+        )
+
+        grouped_previsions = prevision_qs.annotate(
+            annee=ExtractYear('date_prevus')
+        ).values(
+            'descript_prevision__num_ordre',
+            'descript_prevision__description_prevision',
+            'annee'
+        ).annotate(
+            total_prevus=Coalesce(Sum('montant_prevus'), Decimal('0.00'), output_field=DecimalField())
+        ).order_by('descript_prevision__num_ordre', 'annee')
+
+        combined_data = []
+
+        for group in grouped_previsions:
+            num_ordre = group['descript_prevision__num_ordre']
+            annee = group['annee']
+
+            related_previsions = prevision_qs.filter(
+                descript_prevision__num_ordre=num_ordre,
+                date_prevus__year=annee
+            ).values('nom_prevision', 'num_compte', 'montant_prevus')
+
+            prevision_list = []
+
+            for item in related_previsions:
+                prevision_list.append({
+                    'libelle': item['nom_prevision'],
+                    'num_compte': item['num_compte'],
+                    'prevision': item['montant_prevus'],
+                })
+
+            combined_data.append({
+                'num_ordre': num_ordre,
+                'description_prevision': group['descript_prevision__description_prevision'],
+                'annee_prevus': annee,
+                'total_prevus': group['total_prevus'],
+                'lignes': prevision_list
+            })
+
+        return Response({'rapport_prevision': combined_data}, status=status.HTTP_200_OK)
