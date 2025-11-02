@@ -76,7 +76,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'Api_prosphora_Core.urls'
-AUTH_USER_MODEL = 'Api_prosphora_App.User'
+#ATH_USER_MODEL = 'Api_prosphora_App.User'
 
 
 
@@ -90,7 +90,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',
     ]
 }
 
