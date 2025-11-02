@@ -213,7 +213,7 @@ class Abonnement_Mixins(
     mixins.ListModelMixin
 ):
 
-   #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
 
     queryset = Abonnement.objects.all()
@@ -272,7 +272,7 @@ class Groupe_Offrandes_Mixins(
     mixins.ListModelMixin
 ):
 
-   #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
 
     queryset = Groupe_Offrandes.objects.all()
@@ -319,7 +319,7 @@ class Offrande_Mixins(
     mixins.ListModelMixin,
     generics.GenericAPIView
 ):
-  # permission_classes = [IsAuthenticated, IsSameChurch]
+    permission_classes = [IsAuthenticated, IsSameChurch]
     serializer_class = Sorte_OffrandeSerializer
     queryset = Sorte_Offrande.objects.all()
     lookup_field = 'pk'
@@ -378,7 +378,7 @@ class Groupe_Previsions_Mixins(
     mixins.ListModelMixin
 ):
 
-   #permission_classes = [IsAuthenticated, IsSameChurch]
+    permission_classes = [IsAuthenticated, IsSameChurch]
 
 
     queryset = Groupe_Previsions.objects.all()
@@ -429,7 +429,7 @@ class Prevoir_Mixins(
     mixins.ListModelMixin
 ):
 
-  # permission_classes = [IsAuthenticated, IsSameChurch]
+    permission_classes = [IsAuthenticated, IsSameChurch]
 
 
     queryset = Prevoir.objects.all()
@@ -483,7 +483,7 @@ class Payement_Offrande_Mixins(
     mixins.ListModelMixin
 ):
 
- #  permission_classes = [IsAuthenticated, IsSameChurch]
+    permission_classes = [IsAuthenticated, IsSameChurch]
 
 
     queryset = Payement_Offrande.objects.all()
@@ -541,7 +541,8 @@ class Ahadi_Mixins(
     queryset = Ahadi.objects.all()
     serializer_class = AhadiSerializer
     lookup_field = 'pk'
-  # permission_classes = [IsAuthenticated, IsSameChurch]
+
+    permission_classes = [IsAuthenticated, IsSameChurch]
 
     def get_queryset(self):
         
@@ -610,7 +611,7 @@ class EtatBesoin_Mixins(
     mixins.ListModelMixin
 ):
 
-  # permission_classes = [IsAuthenticated, IsAbonnementValide]
+    permission_classes = [IsAuthenticated, IsAbonnementValide]
 
 
     queryset = EtatBesoin.objects.all()
@@ -655,7 +656,7 @@ class EtatBesoin_Mixins(
 
 class BilanAPIView(APIView):
 
-  # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         prevision_qs = Prevoir.objects.select_related('descript_prevision')
@@ -772,7 +773,7 @@ class BilanAPIView(APIView):
 
 class LivreCaisseAPIView(APIView):
     
-  # permission_classes = [IsAuthenticated, IsAbonnementValide, IsSameChurch]
+    permission_classes = [IsAuthenticated, IsAbonnementValide, IsSameChurch]
 
     def get(self, request):
         user_eglise = request.user.eglise  
@@ -813,7 +814,7 @@ class LivreCaisseAPIView(APIView):
 # =================== Rapport prevision =======================================
 class RapportPrevisionAPIView(APIView):
 
-  # permission_classes = [IsAuthenticated, IsAbonnementValide, IsSameChurch]
+    permission_classes = [IsAuthenticated, IsAbonnementValide, IsSameChurch]
 
     def get(self, request):
         user_eglise = request.user.eglise  
