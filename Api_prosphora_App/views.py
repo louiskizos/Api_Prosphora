@@ -13,6 +13,9 @@ from django.db.models import Sum, Q, OuterRef, Subquery, Sum, DecimalField, BigI
 from decimal import Decimal
 from django.db.models.functions import Coalesce, ExtractYear, Cast
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import authenticate, login
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 import subprocess
 import os
@@ -115,24 +118,18 @@ class Register_Mixins(
 
         return self.destroy(request, *args, **kwargs)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class LoginView(APIView):
-    @csrf_exempt
-    
-    
     def post(self, request):
-
         num_phone = request.data.get("num_phone")
         password = request.data.get("password")
         print(f"Login attempt: num_phone={num_phone}, password={'*' * len(password) if password else None}")
 
         user = authenticate(request, num_phone=num_phone, password=password)
 
-        if user is not None:
+        if user:
             login(request, user)
-
-            
             dernier_abonnement = user.eglise.abonnements.order_by('-date').first()
-
             response_data = {
                 "user_id": user.id,
                 "nom": user.nom,
@@ -142,7 +139,6 @@ class LoginView(APIView):
                 "abonnement_mois": dernier_abonnement.mois if dernier_abonnement else None,
                 "abonnement_date": dernier_abonnement.date if dernier_abonnement else None
             }
-
             return Response(response_data, status=status.HTTP_200_OK)
 
         return Response({"error": "Identifiants invalides."}, status=status.HTTP_401_UNAUTHORIZED)

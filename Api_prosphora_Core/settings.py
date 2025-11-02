@@ -88,7 +88,7 @@ REST_FRAMEWORK = {
 # settings.py
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5153"# ton frontend React
+    "http://localhost:5173"  # ton frontend React
 ]
 
 
