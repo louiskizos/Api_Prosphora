@@ -120,17 +120,15 @@ class Register_Mixins(
 
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(APIView):
-    authentication_classes = []  # on désactive la session auth obligatoire pour login
-    permission_classes = []      # pas besoin d'être connecté pour se connecter
-
     def post(self, request):
         num_phone = request.data.get("num_phone")
         password = request.data.get("password")
 
         user = authenticate(request, num_phone=num_phone, password=password)
 
-        if user:
+        if user is not None:
             login(request, user)
+
             dernier_abonnement = user.eglise.abonnements.order_by('-date').first()
 
             return Response({
@@ -143,7 +141,7 @@ class LoginView(APIView):
                 "abonnement_date": dernier_abonnement.date if dernier_abonnement else None
             })
 
-        return Response({"error": "Identifiants invalides"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"error": "Identifiants invalides."}, status=401)
 
 class LogoutView(APIView):
     

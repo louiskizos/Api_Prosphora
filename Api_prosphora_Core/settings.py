@@ -52,17 +52,20 @@ INSTALLED_APPS = [
 ]
 
 
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "https://prosphora.vercel.app"  # si tu as un frontend en ligne
-]
+CORS_ALLOW_ALL_ORIGINS = True
+
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
     "https://api-prosphora-manager.onrender.com",
     "http://localhost:5173",
 ]
+CSRF_TRUSTED_ORIGINS = [
+    "https://api-prosphora-manager.onrender.com",
+    "https://prosphora.vercel.app",
+    "http://localhost:5173",
+]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -114,6 +117,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'Api_prosphora_Core.wsgi.application'
 AUTH_USER_MODEL = "Api_prosphora_App.App_user"
+
 
 
 # Database
