@@ -12,7 +12,7 @@ from rest_framework import status
 from django.db.models import Sum, Q, OuterRef, Subquery, Sum, DecimalField, BigIntegerField
 from decimal import Decimal
 from django.db.models.functions import Coalesce, ExtractYear, Cast
-
+from django.views.decorators.csrf import csrf_exempt
 
 import subprocess
 import os
@@ -116,6 +116,8 @@ class Register_Mixins(
         return self.destroy(request, *args, **kwargs)
 
 class LoginView(APIView):
+    @csrf_exempt
+    
     
     def post(self, request):
 
