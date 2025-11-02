@@ -52,8 +52,17 @@ INSTALLED_APPS = [
 ]
 
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "https://prosphora.vercel.app"  # si tu as un frontend en ligne
+]
+CORS_ALLOW_CREDENTIALS = True
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://api-prosphora-manager.onrender.com",
+    "http://localhost:5173",
+]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -85,11 +94,6 @@ REST_FRAMEWORK = {
     ]
 }
 
-# settings.py
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173"  # ton frontend React
-]
 
 
 TEMPLATES = [
