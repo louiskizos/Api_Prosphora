@@ -118,18 +118,34 @@ class Register_Mixins(
 
         return self.destroy(request, *args, **kwargs)
 
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(APIView):
+
+    def get(self, request):
+        return Response(
+            {"message": "Utilisez POST pour vous connecter."},
+            status=status.HTTP_200_OK
+        )
+
     def post(self, request):
         num_phone = request.data.get("num_phone")
         password = request.data.get("password")
+
+        if not num_phone or not password:
+            return Response({"error": "Numéro de téléphone et mot de passe requis."},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         user = authenticate(request, num_phone=num_phone, password=password)
 
         if user is not None:
             login(request, user)
 
-            dernier_abonnement = user.eglise.abonnements.order_by('-date').first()
+            dernier_abonnement = (
+                user.eglise.abonnements.order_by('-date').first()
+                if hasattr(user, "eglise") and user.eglise else None
+            )
 
             return Response({
                 "user_id": user.id,
@@ -137,13 +153,13 @@ class LoginView(APIView):
                 "num_phone": user.num_phone,
                 "role": user.role,
                 "eglise": user.eglise.nom if user.eglise else None,
-                "id_eglise": user.eglise.id if user.eglise else None,
+                "id_eglise": user.eglise.id if hasattr(user, "eglise") and user.eglise else None,
                 "abonnement_mois": dernier_abonnement.mois if dernier_abonnement else None,
                 "abonnement_date": dernier_abonnement.date if dernier_abonnement else None
-            })
+            }, status=status.HTTP_200_OK)
 
-        return Response({"error": "Identifiants invalides."}, status=401)
-
+        return Response({"error": "Identifiants invalides."}, status=status.HTTP_401_UNAUTHORIZED)
+    
 class LogoutView(APIView):
     
     def post(self, request):
@@ -220,19 +236,18 @@ class Abonnement_Mixins(
     
 
     def get_queryset(self):
+        id_eglise = self.kwargs.get('id_eglise')
         pk = self.kwargs.get('pk')
-        if pk:
-            return Abonnement.objects.filter(pk=pk)
-        return Abonnement.objects.all()
-    
-    # def get_queryset(self):
-    #     abonnement_eglise = self.request.user.eglise
-    #     pk = self.kwargs.get('pk')
-    #     if pk:
-    #         return Abonnement.objects.filter(pk=pk, id=abonnement_eglise.id)
-        
-    #     return Abonnement.objects.filter(id=abonnement_eglise.id)
 
+        queryset = Abonnement.objects.all()
+
+        if id_eglise:
+            queryset = queryset.filter(eglise__id=id_eglise)
+        if pk:
+            queryset = queryset.filter(pk=pk)
+
+        return queryset
+    
 
 
     def get(self, request, *args, **kwargs):
@@ -398,7 +413,11 @@ class Groupe_Previsions_Mixins(
     
 
     def get_queryset(self):
+        id_eglise = self.kwargs.get('id_eglise')
         user = self.request.user
+
+        if id_eglise:
+            return Groupe_Previsions.objects.filter(user__eglise__id=id_eglise)
 
         if not hasattr(user, "eglise") or user.eglise is None:
             return Groupe_Previsions.objects.none()
@@ -496,20 +515,23 @@ class Payement_Offrande_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated, IsSameChurch]
+ #  permission_classes = [IsAuthenticated, IsSameChurch]
 
 
     queryset = Payement_Offrande.objects.all()
     serializer_class = PayementOffrandeSerializer
     lookup_field = 'pk'
-    
     def get_queryset(self):
         user_eglise = self.request.user.eglise
         pk = self.kwargs.get('pk')
+        eglise_id = self.kwargs.get('eglise_id')
 
-        queryset = Payement_Offrande.objects.filter(
-            nom_offrande__descript_recette__user__eglise=user_eglise
-        )
+        queryset = Payement_Offrande.objects.all()
+
+        if eglise_id:
+            queryset = queryset.filter(nom_offrande__descript_recette__user__eglise_id=eglise_id)
+        else:
+            queryset = queryset.filter(nom_offrande__descript_recette__user__eglise=user_eglise)
 
         if pk:
             queryset = queryset.filter(pk=pk)
@@ -676,12 +698,29 @@ class EtatBesoin_Mixins(
 
 # ======================== Rapport Bilan =========================   
 
+
 class BilanAPIView(APIView):
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        eglise_id = request.query_params.get('eglise_id')
 
-    permission_classes = [IsAuthenticated]
+        if eglise_id:
+            prevision_qs = Prevoir.objects.select_related('descript_prevision').filter(
+                descript_prevision__user__eglise_id=eglise_id
+            )
+            paiement_qs = Payement_Offrande.objects.select_related('nom_offrande').filter(
+                nom_offrande__descript_recette__user__eglise_id=eglise_id
+            )
+        else:
+            if not hasattr(user, "eglise") or user.eglise is None:
+                return Response({'bilan_data': []}, status=status.HTTP_200_OK)
+            prevision_qs = Prevoir.objects.select_related('descript_prevision').filter(
+                descript_prevision__user__eglise=user.eglise
+            )
+            paiement_qs = Payement_Offrande.objects.select_related('nom_offrande').filter(
+                nom_offrande__descript_recette__user__eglise=user.eglise
+            )
 
-    def get(self, request):
-        prevision_qs = Prevoir.objects.select_related('descript_prevision')
         grouped_previsions = prevision_qs.annotate(
             annee=ExtractYear('date_prevus')
         ).values(
@@ -692,14 +731,10 @@ class BilanAPIView(APIView):
             total_prevus=Coalesce(Sum('montant_prevus'), Decimal('0.00'), output_field=DecimalField())
         ).order_by('descript_prevision__num_ordre', 'annee')
 
-        combined_data = []
-
-        paiement_qs = Payement_Offrande.objects.select_related('nom_offrande').annotate(
+        paiement_totals_by_currency = paiement_qs.annotate(
             annee_payement=ExtractYear('date_payement'),
             compte_rapprochement=Cast('nom_offrande__num_compte', output_field=BigIntegerField())
-        )
-
-        paiement_totals_by_currency = paiement_qs.values(
+        ).values(
             'compte_rapprochement',
             'annee_payement',
             'type_monaie',
@@ -731,6 +766,8 @@ class BilanAPIView(APIView):
                 'depense': item['total_depense']
             }
 
+        combined_data = []
+
         for group in grouped_previsions:
             num_ordre = group['descript_prevision__num_ordre']
             annee = group['annee']
@@ -744,7 +781,6 @@ class BilanAPIView(APIView):
 
             prevision_list = []
             paiement_list = []
-
             current_totals = {'recettes': {}, 'depenses': {}}
 
             for item in related_previsions:
@@ -788,7 +824,7 @@ class BilanAPIView(APIView):
             })
 
         return Response({'bilan_data': combined_data}, status=status.HTTP_200_OK)
-    
+
 # =================== Rapport livre de caisse =======================================
 
 

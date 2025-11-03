@@ -147,6 +147,7 @@ class AhadiSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
 
         request = self.context.get('request', None)
+        
         if request and hasattr(request, "user"):
             user = request.user
             self.fields['nom_offrande'].queryset = (
