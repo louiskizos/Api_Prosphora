@@ -85,7 +85,7 @@ path('bilan/<int:eglise_id>/', BilanAPIView.as_view(), name='bilan'),
     path('rapport_prevision/', RapportPrevisionAPIView.as_view(), name='rapport_prevision'),
 
 # =========== Backup Database =========================
-    path('backup_database/', BackupPostgresAPIView.as_view(), name='backup_database'),
-    path('backup_eglise/<int:eglise_id>/', backup_view, name='backup_database_eglise'),
+   # path('backup_database/<int:eglise_id>/', backup_view, name='backup_database'),
+    path('backup_eglise/<int:eglise_id>/', backup_json_view, name='backup_database_eglise'),
 
 ]

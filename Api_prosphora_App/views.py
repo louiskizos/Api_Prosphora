@@ -17,68 +17,37 @@ from django.contrib.auth import authenticate, login
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import os
-import subprocess
 from datetime import datetime
-from django.conf import settings
 from django.http import FileResponse
 from django.http import FileResponse
 from django.core import management
 import tempfile
-
-class BackupPostgresAPIView(APIView):
-
-    def post(self, request):
-        db_config = settings.DATABASES['default']
-        USER = db_config['USER']
-        PASSWORD = db_config['PASSWORD']
-        HOST = db_config['HOST']
-        PORT = db_config.get('PORT', '5432')
-        DATABASE = db_config['NAME']
-
-        DATE = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        BACKUP_FILE = f"/tmp/backup_{DATE}.sql"
-
-        try:
-            # Variables d'environnement pour pg_dump
-            env = os.environ.copy()
-            env["PGPASSWORD"] = PASSWORD
-            env["PGSSLMODE"] = "require"  # Obligatoire pour Render External
-
-            # Lancer pg_dump
-            subprocess.run(
-                [
-                    "pg_dump",
-                    "-h", HOST,
-                    "-p", PORT,
-                    "-U", USER,
-                    "-F", "c",  # format custom
-                    "-f", BACKUP_FILE,
-                    DATABASE
-                ],
-                check=True,
-                env=env
-            )
-
-            # Envoyer le fichier directement au client
-            response = FileResponse(
-                open(BACKUP_FILE, 'rb'),
-                as_attachment=True,
-                filename=f"backup_{DATE}.sql"
-            )
-            return response
-
-        except subprocess.CalledProcessError as e:
-            return Response(
-                {"status": "error", "message": f"Erreur lors du backup : {e}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        finally:
-            # Nettoyer le fichier sur le serveur après l'envoi
-            if os.path.exists(BACKUP_FILE):
-                os.remove(BACKUP_FILE)
+from django.http import FileResponse
+from django.core import management
 
 
-def backup_view(request, eglise_id):
+
+
+
+# def backup_view(request, eglise_id):
+
+#     eglise = Church.objects.filter(id=eglise_id).first()
+#     if not eglise:
+#         return HttpResponse("Église non trouvée", status=404)
+
+#     today = datetime.now().strftime("%Y-%m-%d")
+#     filename = f"{eglise.nom}_{today}_backup.json"
+
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
+#         management.call_command('dumpdata', '--indent=2', f'--output={tmp.name}')
+#         tmp.flush()
+#         response = FileResponse(open(tmp.name, 'rb'), as_attachment=True, filename=filename)
+
+#     os.unlink(tmp.name)
+#     return response
+
+def backup_json_view(request, eglise_id):
+
     try:
         eglise = Church.objects.get(pk=eglise_id)
     except Church.DoesNotExist:
