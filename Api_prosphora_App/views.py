@@ -16,15 +16,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-
-import subprocess
 import os
+import subprocess
 from datetime import datetime
 from django.conf import settings
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 from django.http import FileResponse
+from django.http import FileResponse
+from django.core import management
+import tempfile
 
 class BackupPostgresAPIView(APIView):
 
@@ -77,6 +76,31 @@ class BackupPostgresAPIView(APIView):
             # Nettoyer le fichier sur le serveur après l'envoi
             if os.path.exists(BACKUP_FILE):
                 os.remove(BACKUP_FILE)
+
+
+def backup_view(request, eglise_id):
+    try:
+        eglise = Church.objects.get(pk=eglise_id)
+    except Church.DoesNotExist:
+        return FileResponse(status=404)
+
+    nom_eglise = eglise.nom.replace(" ", "_")
+    date_str = timezone.now().strftime("%Y-%m-%d")
+    filename = f"{nom_eglise}_{date_str}_backup.json"
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
+        management.call_command('dumpdata', '--indent=2', f'--output={tmp.name}')
+        tmp.flush()
+        response = FileResponse(
+            open(tmp.name, 'rb'),
+            as_attachment=True,
+            filename=filename
+        )
+
+    os.unlink(tmp.name)
+    return response
+
+
 
 
 class Register_Mixins(
