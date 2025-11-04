@@ -399,49 +399,44 @@ class Groupe_Previsions_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
 ):
-
-   # permission_classes = [IsAuthenticated, IsSameChurch]
-
-
     queryset = Groupe_Previsions.objects.all()
     serializer_class = Groupe_PrevisionsSerializer
     lookup_field = 'pk'
-    
+
+    # permission_classes = [IsAuthenticated, IsSameChurch]
 
     def get_queryset(self):
-        id_eglise = self.kwargs.get('id_eglise')
         user = self.request.user
+        eglise_id = (
+            self.kwargs.get('eglise_id')
+            or self.request.query_params.get('eglise_id')
+        )
 
-        if id_eglise:
-            return Groupe_Previsions.objects.filter(user__eglise__id=id_eglise)
+        if eglise_id:
+            return Groupe_Previsions.objects.filter(user__eglise_id=eglise_id)
 
-        if not hasattr(user, "eglise") or user.eglise is None:
-            return Groupe_Previsions.objects.none()
+        if getattr(user, "is_authenticated", False) and hasattr(user, "eglise") and user.eglise:
+            return Groupe_Previsions.objects.filter(user__eglise=user.eglise)
 
-        return Groupe_Previsions.objects.filter(user__eglise=user.eglise)
-
+        return Groupe_Previsions.objects.none()
 
     def get(self, request, *args, **kwargs):
-
         pk = kwargs.get('pk')
         if pk is not None:
             return self.retrieve(request, *args, **kwargs)
-
         return self.list(request, *args, **kwargs)
-    
+
     def post(self, request):
         serializer = Groupe_PrevisionsSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Groupe de prévision créé."})
         return Response(serializer.errors, status=400)
-    
+
     def put(self, request, *args, **kwargs):
-
         return self.update(request, *args, **kwargs)
-    
-    def delete(self, request, *args, **kwargs):
 
+    def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
     
 # ======================== PREVOIR =========================
@@ -510,54 +505,52 @@ class Payement_Offrande_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
 ):
-
- #  permission_classes = [IsAuthenticated, IsSameChurch]
-
-
     queryset = Payement_Offrande.objects.all()
     serializer_class = PayementOffrandeSerializer
     lookup_field = 'pk'
+    # permission_classes = [IsAuthenticated, IsSameChurch]
+
     def get_queryset(self):
-        user_eglise = self.request.user.eglise
+        user = self.request.user
         pk = self.kwargs.get('pk')
         eglise_id = self.kwargs.get('eglise_id')
 
         queryset = Payement_Offrande.objects.all()
 
         if eglise_id:
-            queryset = queryset.filter(nom_offrande__descript_recette__user__eglise_id=eglise_id)
+            queryset = queryset.filter(
+                nom_offrande__descript_recette__user__eglise_id=eglise_id
+            )
+        elif getattr(user, "is_authenticated", False) and hasattr(user, "eglise") and user.eglise:
+            queryset = queryset.filter(
+                nom_offrande__descript_recette__user__eglise=user.eglise
+            )
         else:
-            queryset = queryset.filter(nom_offrande__descript_recette__user__eglise=user_eglise)
+            queryset = Payement_Offrande.objects.none()
 
         if pk:
             queryset = queryset.filter(pk=pk)
 
         return queryset
 
-
     def get(self, request, *args, **kwargs):
-
         pk = kwargs.get('pk')
-        if pk is not None:
+        if pk:
             return self.retrieve(request, *args, **kwargs)
-
         return self.list(request, *args, **kwargs)
-    
-    def post(self, request):
-        serializer = PayementOffrandeSerializer(data=request.data)
+
+    def post(self, request, *args, **kwargs):
+        serializer = PayementOffrandeSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Payement créé."})
         return Response(serializer.errors, status=400)
-    
+
     def put(self, request, *args, **kwargs):
-
         return self.update(request, *args, **kwargs)
-    
+
     def delete(self, request, *args, **kwargs):
-
-        return self.destroy(request, *args, **kwargs)   
-
+        return self.destroy(request, *args, **kwargs)
 
 # ======================== AHADI =========================
 
@@ -572,24 +565,23 @@ class Ahadi_Mixins(
     queryset = Ahadi.objects.all()
     serializer_class = AhadiSerializer
     lookup_field = 'pk'
-
-   #permission_classes = [IsAuthenticated, IsSameChurch]
+    # permission_classes = [IsAuthenticated, IsSameChurch]
 
     def get_queryset(self):
         user = self.request.user
         pk = self.kwargs.get('pk')
-
         eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
 
         if eglise_id:
             queryset = Ahadi.objects.filter(
                 nom_offrande__descript_recette__user__eglise_id=eglise_id
             )
-        else:
-
+        elif getattr(user, "is_authenticated", False) and hasattr(user, "eglise") and user.eglise:
             queryset = Ahadi.objects.filter(
                 nom_offrande__descript_recette__user__eglise=user.eglise
             )
+        else:
+            queryset = Ahadi.objects.none()
 
         if pk:
             queryset = queryset.filter(pk=pk)
@@ -597,8 +589,18 @@ class Ahadi_Mixins(
         return queryset
 
     def get(self, request, *args, **kwargs):
-        
+        user = request.user
+        eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
+
         engagements = self.get_queryset()
+
+        filtre_eglise = {}
+        if eglise_id:
+            filtre_eglise["nom_offrande__descript_recette__user__eglise_id"] = eglise_id
+        elif getattr(user, "is_authenticated", False) and hasattr(user, "eglise") and user.eglise:
+            filtre_eglise["nom_offrande__descript_recette__user__eglise"] = user.eglise
+        else:
+            return Response({"ahadi_data": []}, status=status.HTTP_200_OK)
 
         paiements = (
             Payement_Offrande.objects.filter(
@@ -606,7 +608,7 @@ class Ahadi_Mixins(
                 nom_offrande=OuterRef('nom_offrande'),
                 departement=OuterRef('nom_postnom'),
                 nom_offrande__descript_recette__description_recette="LES ENGAGEMENTS DES ADHERENTS",
-                nom_offrande__descript_recette__user__eglise=request.user.eglise 
+                **filtre_eglise
             )
             .values('nom_offrande', 'departement')
             .annotate(total_paye=Sum('montant'))
@@ -627,16 +629,17 @@ class Ahadi_Mixins(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response({"message": "Ahadi créé avec succès.", "data": serializer.data},
-                        status=status.HTTP_201_CREATED)
+        return Response(
+            {"message": "Ahadi créé avec succès.", "data": serializer.data},
+            status=status.HTTP_201_CREATED
+        )
 
     def put(self, request, *args, **kwargs):
-        
         return self.update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
-        
         return self.destroy(request, *args, **kwargs)
+
 
 # ======================== ETAT DE BESOIN =========================
 
@@ -825,7 +828,8 @@ class BilanAPIView(APIView):
 
 
 class LivreCaisseAPIView(APIView):
-    permission_classes = [IsAuthenticated]  
+
+    #permission_classes = [IsAuthenticated]  
 
     def get(self, request, *args, **kwargs):
         user = request.user
