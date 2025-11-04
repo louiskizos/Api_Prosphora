@@ -455,7 +455,7 @@ class Prevoir_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated, IsSameChurch]
+  #  permission_classes = [IsAuthenticated, IsSameChurch]
 
 
     queryset = Prevoir.objects.all()
@@ -831,11 +831,10 @@ class LivreCaisseAPIView(APIView):
         user = request.user
         eglise_id = kwargs.get('eglise_id')
 
-        # Si l'utilisateur est anonyme, on empêche l'accès
         if not user.is_authenticated:
             return Response({"error": "Authentification requise."}, status=401)
 
-        # Détermination de l'église utilisée
+      
         if eglise_id:
             data_queryset = Payement_Offrande.objects.filter(
                 nom_offrande__descript_recette__user__eglise_id=eglise_id
@@ -847,7 +846,7 @@ class LivreCaisseAPIView(APIView):
         else:
             return Response({"error": "Aucune église associée à l’utilisateur."}, status=400)
 
-        # Calculs cumulés
+        
         cumulative_sums_by_currency = {}
         processed_data = []
 

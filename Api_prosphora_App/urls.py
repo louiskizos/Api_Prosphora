@@ -76,7 +76,7 @@ urlpatterns = [
 
 # ============= Bilan ====================
    #path('bilan/<int:eglise_id>/', BilanAPIView.as_view(), name='bilan'),
-path('bilan/<int:eglise_id>/', BilanAPIView.as_view(), name='bilan'),
+    path('bilan/<int:eglise_id>/', BilanAPIView.as_view(), name='bilan'),
 
 # ============= Livre de caisse =========================
     path('livre_caisse/<int:eglise_id>/', LivreCaisseAPIView.as_view(), name='livre_caisse'),

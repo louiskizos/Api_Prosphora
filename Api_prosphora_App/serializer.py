@@ -102,19 +102,21 @@ class Sorte_OffrandeSerializer(serializers.ModelSerializer):
         model = Sorte_Offrande
         fields = '__all__'
 
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        eglise_id = kwargs.pop('eglise_id', None)
+        super().__init__(*args, **kwargs)
 
-    #     request = self.context.get('request', None)
-    #     if request and hasattr(request, "user"):
-    #         user = request.user
-            
-    #         self.fields['descript_recette'].queryset = (
-    #             self.fields['descript_recette'].queryset.filter(
-    #                 user__eglise=user.eglise
-    #             )
-    #         )
+        request = self.context.get('request', None)
+        user = getattr(request, "user", None)
 
+        if eglise_id:
+            self.fields['descript_recette'].queryset = (
+                self.fields['descript_recette'].queryset.filter(user__eglise_id=eglise_id)
+            )
+        elif user and hasattr(user, "eglise"):
+            self.fields['descript_recette'].queryset = (
+                self.fields['descript_recette'].queryset.filter(user__eglise=user.eglise)
+            )
 
 
 class Groupe_PrevisionsSerializer(serializers.ModelSerializer):
@@ -128,19 +130,19 @@ class PrevoirSerializer(serializers.ModelSerializer):
         model = Prevoir
         fields = '__all__'
 
-    # def __init__(self, *args, **kwargs):
-    #         super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        eglise_id = kwargs.pop('eglise_id', None)
+        super().__init__(*args, **kwargs)
 
-    #         request = self.context.get('request', None)
-    #         if request and hasattr(request, "user"):
-    #             user = request.user
+        request = self.context.get('request', None)
+        user = getattr(request, "user", None)
 
-    #             if hasattr(user, "eglise") and user.eglise:
-    #                 self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.filter(
-    #                     user__eglise=user.eglise
-    #                 )
-    #             else:
-    #                 self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.none()
+        if eglise_id:
+            self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.filter(user__eglise_id=eglise_id)
+        elif user and hasattr(user, "eglise"):
+            self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.filter(user__eglise=user.eglise)
+        else:
+            self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.none()
 
 
 class AhadiSerializer(serializers.ModelSerializer):
@@ -151,18 +153,18 @@ class AhadiSerializer(serializers.ModelSerializer):
         model = Ahadi
         fields = '__all__'
 
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    #     request = self.context.get('request', None)
+        request = self.context.get('request', None)
         
-    #     if request and hasattr(request, "user"):
-    #         user = request.user
-    #         self.fields['nom_offrande'].queryset = (
-    #             self.fields['nom_offrande'].queryset.filter(
-    #                 descript_recette__user__eglise=user.eglise
-    #             )
-    #         )
+        if request and hasattr(request, "user"):
+            user = request.user
+            self.fields['nom_offrande'].queryset = (
+                self.fields['nom_offrande'].queryset.filter(
+                    descript_recette__user__eglise=user.eglise
+                )
+            )
 
 
 class EtatBesoinSerializer(serializers.ModelSerializer):
