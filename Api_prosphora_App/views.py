@@ -835,9 +835,6 @@ class LivreCaisseAPIView(APIView):
         user = request.user
         eglise_id = kwargs.get('eglise_id')
 
-        if not user.is_authenticated:
-            return Response({"error": "Authentification requise."}, status=401)
-
       
         if eglise_id:
             data_queryset = Payement_Offrande.objects.filter(
