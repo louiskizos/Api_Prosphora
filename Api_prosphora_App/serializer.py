@@ -5,25 +5,33 @@ from .models import *
 
 
 
-
 class PayementOffrandeSerializer(serializers.ModelSerializer):
     num_compte = serializers.CharField(source='nom_offrande.num_compte', read_only=True)
     nom_offrande_nom = serializers.CharField(source='nom_offrande.nom_offrande', read_only=True)
 
     class Meta:
         model = Payement_Offrande
-        fields = '__all__'  
+        fields = '__all__'
 
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    #     request = self.context.get('request', None)
-    #     if request and hasattr(request, "user"):
-    #         user = request.user
-    #         # On limite les choix de nom_offrande à ceux de l’église du user connecté
-    #         self.fields['nom_offrande'].queryset = Sorte_Offrande.objects.filter(
-    #             descript_recette__user__eglise=user.eglise
-    #         )
+        request = self.context.get('request', None)
+        id_eglise = self.context.get('id_eglise', None) 
+
+        if id_eglise:
+           
+            self.fields['nom_offrande'].queryset = Sorte_Offrande.objects.filter(
+                descript_recette__user__eglise__id=id_eglise
+            )
+
+        elif request and hasattr(request, "user") and hasattr(request.user, "eglise"):
+          
+            self.fields['nom_offrande'].queryset = Sorte_Offrande.objects.filter(
+                descript_recette__user__eglise=request.user.eglise
+            )
+        else:
+            self.fields['nom_offrande'].queryset = Sorte_Offrande.objects.none()
 
 
 # Sérialiseur pour Prevoir

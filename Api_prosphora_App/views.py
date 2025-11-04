@@ -287,13 +287,16 @@ class Groupe_Offrandes_Mixins(
     
 
     def get_queryset(self):
-        user_eglise = self.request.user.eglise
-        eglise_id = self.kwargs.get('eglise_id')
+        user = self.request.user
+        eglise_id = self.kwargs.get('eglise_id', None)
 
         if eglise_id:
             return Groupe_Offrandes.objects.filter(user__eglise_id=eglise_id)
-        
-        return Groupe_Offrandes.objects.filter(user__eglise=user_eglise)
+
+        if hasattr(user, "eglise") and user.eglise:
+            return Groupe_Offrandes.objects.filter(user__eglise=user.eglise)
+
+        return Groupe_Offrandes.objects.none()
 
 
     def get(self, request, *args, **kwargs):
@@ -397,7 +400,7 @@ class Groupe_Previsions_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated, IsSameChurch]
+   # permission_classes = [IsAuthenticated, IsSameChurch]
 
 
     queryset = Groupe_Previsions.objects.all()
@@ -821,22 +824,30 @@ class BilanAPIView(APIView):
 # =================== Rapport livre de caisse =======================================
 
 
-
 class LivreCaisseAPIView(APIView):
+    permission_classes = [IsAuthenticated]  
 
     def get(self, request, *args, **kwargs):
-        user_eglise = request.user.eglise
-        eglise_id = kwargs.get('eglise_id')  # récupère l'ID depuis l'URL si présent
+        user = request.user
+        eglise_id = kwargs.get('eglise_id')
 
+        # Si l'utilisateur est anonyme, on empêche l'accès
+        if not user.is_authenticated:
+            return Response({"error": "Authentification requise."}, status=401)
+
+        # Détermination de l'église utilisée
         if eglise_id:
             data_queryset = Payement_Offrande.objects.filter(
                 nom_offrande__descript_recette__user__eglise_id=eglise_id
             ).order_by('type_monaie', 'date_payement')
-        else:
+        elif hasattr(user, "eglise") and user.eglise:
             data_queryset = Payement_Offrande.objects.filter(
-                nom_offrande__descript_recette__user__eglise=user_eglise
+                nom_offrande__descript_recette__user__eglise=user.eglise
             ).order_by('type_monaie', 'date_payement')
+        else:
+            return Response({"error": "Aucune église associée à l’utilisateur."}, status=400)
 
+        # Calculs cumulés
         cumulative_sums_by_currency = {}
         processed_data = []
 
@@ -844,10 +855,8 @@ class LivreCaisseAPIView(APIView):
             monnaie = item.type_monaie
             montant = item.montant or 0
             cumulative_sums_by_currency[monnaie] = cumulative_sums_by_currency.get(monnaie, 0)
-            if item.type_payement == 'out':
-                cumulative_sums_by_currency[monnaie] -= montant
-            else:
-                cumulative_sums_by_currency[monnaie] += montant
+            cumulative_sums_by_currency[monnaie] += montant if item.type_payement != 'out' else -montant
+
             processed_data.append({
                 'id': item.id,
                 'date_payement': item.date_payement,
