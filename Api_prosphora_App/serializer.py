@@ -155,16 +155,19 @@ class AhadiSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         request = self.context.get('request', None)
-        
-        if request and hasattr(request, "user"):
+
+        if request and getattr(request.user, "is_authenticated", False):
             user = request.user
-            self.fields['nom_offrande'].queryset = (
-                self.fields['nom_offrande'].queryset.filter(
-                    descript_recette__user__eglise=user.eglise
+            if hasattr(user, "eglise") and user.eglise:
+                self.fields['nom_offrande'].queryset = (
+                    self.fields['nom_offrande'].queryset.filter(
+                        descript_recette__user__eglise=user.eglise
+                    )
                 )
-            )
+        else:
+            
+            self.fields['nom_offrande'].queryset = self.fields['nom_offrande'].queryset.none()
 
 
 class EtatBesoinSerializer(serializers.ModelSerializer):
