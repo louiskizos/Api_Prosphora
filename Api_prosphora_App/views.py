@@ -29,22 +29,22 @@ from django.core import management
 
 
 
-def backup_view(request, eglise_id):
+# def backup_view(request, eglise_id):
 
-    eglise = Church.objects.filter(id=eglise_id).first()
-    if not eglise:
-        return HttpResponse("Église non trouvée", status=404)
+#     eglise = Church.objects.filter(id=eglise_id).first()
+#     if not eglise:
+#         return HttpResponse("Église non trouvée", status=404)
 
-    today = datetime.now().strftime("%Y-%m-%d")
-    filename = f"{eglise.nom}_{today}_backup.json"
+#     today = datetime.now().strftime("%Y-%m-%d")
+#     filename = f"{eglise.nom}_{today}_backup.json"
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
-        management.call_command('dumpdata', '--indent=2', f'--output={tmp.name}')
-        tmp.flush()
-        response = FileResponse(open(tmp.name, 'rb'), as_attachment=True, filename=filename)
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
+#         management.call_command('dumpdata', '--indent=2', f'--output={tmp.name}')
+#         tmp.flush()
+#         response = FileResponse(open(tmp.name, 'rb'), as_attachment=True, filename=filename)
 
-    os.unlink(tmp.name)
-    return response
+#     os.unlink(tmp.name)
+#     return response
 
 def backup_json_view(request, eglise_id):
 

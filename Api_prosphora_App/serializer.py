@@ -14,16 +14,16 @@ class PayementOffrandeSerializer(serializers.ModelSerializer):
         model = Payement_Offrande
         fields = '__all__'  
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
 
-        request = self.context.get('request', None)
-        if request and hasattr(request, "user"):
-            user = request.user
-            # On limite les choix de nom_offrande à ceux de l’église du user connecté
-            self.fields['nom_offrande'].queryset = Sorte_Offrande.objects.filter(
-                descript_recette__user__eglise=user.eglise
-            )
+    #     request = self.context.get('request', None)
+    #     if request and hasattr(request, "user"):
+    #         user = request.user
+    #         # On limite les choix de nom_offrande à ceux de l’église du user connecté
+    #         self.fields['nom_offrande'].queryset = Sorte_Offrande.objects.filter(
+    #             descript_recette__user__eglise=user.eglise
+    #         )
 
 
 # Sérialiseur pour Prevoir
@@ -94,18 +94,18 @@ class Sorte_OffrandeSerializer(serializers.ModelSerializer):
         model = Sorte_Offrande
         fields = '__all__'
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
 
-        request = self.context.get('request', None)
-        if request and hasattr(request, "user"):
-            user = request.user
+    #     request = self.context.get('request', None)
+    #     if request and hasattr(request, "user"):
+    #         user = request.user
             
-            self.fields['descript_recette'].queryset = (
-                self.fields['descript_recette'].queryset.filter(
-                    user__eglise=user.eglise
-                )
-            )
+    #         self.fields['descript_recette'].queryset = (
+    #             self.fields['descript_recette'].queryset.filter(
+    #                 user__eglise=user.eglise
+    #             )
+    #         )
 
 
 
@@ -120,19 +120,19 @@ class PrevoirSerializer(serializers.ModelSerializer):
         model = Prevoir
         fields = '__all__'
 
-    def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
+    # def __init__(self, *args, **kwargs):
+    #         super().__init__(*args, **kwargs)
 
-            request = self.context.get('request', None)
-            if request and hasattr(request, "user"):
-                user = request.user
+    #         request = self.context.get('request', None)
+    #         if request and hasattr(request, "user"):
+    #             user = request.user
 
-                if hasattr(user, "eglise") and user.eglise:
-                    self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.filter(
-                        user__eglise=user.eglise
-                    )
-                else:
-                    self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.none()
+    #             if hasattr(user, "eglise") and user.eglise:
+    #                 self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.filter(
+    #                     user__eglise=user.eglise
+    #                 )
+    #             else:
+    #                 self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.none()
 
 
 class AhadiSerializer(serializers.ModelSerializer):
@@ -143,18 +143,18 @@ class AhadiSerializer(serializers.ModelSerializer):
         model = Ahadi
         fields = '__all__'
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
 
-        request = self.context.get('request', None)
+    #     request = self.context.get('request', None)
         
-        if request and hasattr(request, "user"):
-            user = request.user
-            self.fields['nom_offrande'].queryset = (
-                self.fields['nom_offrande'].queryset.filter(
-                    descript_recette__user__eglise=user.eglise
-                )
-            )
+    #     if request and hasattr(request, "user"):
+    #         user = request.user
+    #         self.fields['nom_offrande'].queryset = (
+    #             self.fields['nom_offrande'].queryset.filter(
+    #                 descript_recette__user__eglise=user.eglise
+    #             )
+    #         )
 
 
 class EtatBesoinSerializer(serializers.ModelSerializer):
