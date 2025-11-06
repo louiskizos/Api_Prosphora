@@ -27,25 +27,6 @@ from django.core import management
 
 
 
-
-
-# def backup_view(request, eglise_id):
-
-#     eglise = Church.objects.filter(id=eglise_id).first()
-#     if not eglise:
-#         return HttpResponse("Église non trouvée", status=404)
-
-#     today = datetime.now().strftime("%Y-%m-%d")
-#     filename = f"{eglise.nom}_{today}_backup.json"
-
-#     with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
-#         management.call_command('dumpdata', '--indent=2', f'--output={tmp.name}')
-#         tmp.flush()
-#         response = FileResponse(open(tmp.name, 'rb'), as_attachment=True, filename=filename)
-
-#     os.unlink(tmp.name)
-#     return response
-
 def backup_json_view(request, eglise_id):
 
     try:
@@ -553,7 +534,6 @@ class Payement_Offrande_Mixins(
         return self.destroy(request, *args, **kwargs)
 
 # ======================== AHADI =========================
-
 class Ahadi_Mixins(
     mixins.CreateModelMixin,
     mixins.RetrieveModelMixin,
@@ -562,79 +542,30 @@ class Ahadi_Mixins(
     mixins.ListModelMixin,
     generics.GenericAPIView
 ):
-    queryset = Ahadi.objects.all()
     serializer_class = AhadiSerializer
     lookup_field = 'pk'
-    # permission_classes = [IsAuthenticated, IsSameChurch]
 
     def get_queryset(self):
-        user = self.request.user
-        pk = self.kwargs.get('pk')
-        eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
+        eglise_id = self.kwargs.get('eglise_id')
+        if not eglise_id:
+            return Ahadi.objects.none()  # Obligatoire de passer eglise_id
 
-        if eglise_id:
-            queryset = Ahadi.objects.filter(
-                nom_offrande__descript_recette__user__eglise_id=eglise_id
-            )
-        elif getattr(user, "is_authenticated", False) and hasattr(user, "eglise") and user.eglise:
-            queryset = Ahadi.objects.filter(
-                nom_offrande__descript_recette__user__eglise=user.eglise
-            )
-        else:
-            queryset = Ahadi.objects.none()
-
-        if pk:
-            queryset = queryset.filter(pk=pk)
-
-        return queryset
+        return Ahadi.objects.filter(nom_offrande__descript_recette__user__eglise_id=eglise_id)
 
     def get(self, request, *args, **kwargs):
-        user = request.user
-        eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
-
-        engagements = self.get_queryset()
-
-        filtre_eglise = {}
-        if eglise_id:
-            filtre_eglise["nom_offrande__descript_recette__user__eglise_id"] = eglise_id
-        elif getattr(user, "is_authenticated", False) and hasattr(user, "eglise") and user.eglise:
-            filtre_eglise["nom_offrande__descript_recette__user__eglise"] = user.eglise
-        else:
-            return Response({"ahadi_data": []}, status=status.HTTP_200_OK)
-
-        paiements = (
-            Payement_Offrande.objects.filter(
-                type_payement="in",
-                nom_offrande=OuterRef('nom_offrande'),
-                departement=OuterRef('nom_postnom'),
-                nom_offrande__descript_recette__description_recette="LES ENGAGEMENTS DES ADHERENTS",
-                **filtre_eglise
-            )
-            .values('nom_offrande', 'departement')
-            .annotate(total_paye=Sum('montant'))
-            .values('total_paye')
-        )
-
-        engagements = engagements.annotate(
-            total_paye=Subquery(paiements, output_field=models.DecimalField(max_digits=15, decimal_places=2))
-        )
-
-        for e in engagements:
-            e.reste = (e.montant or Decimal('0')) - (e.total_paye or Decimal('0'))
-
-        serializer = self.get_serializer(engagements, many=True)
-        return Response({"ahadi_data": serializer.data}, status=status.HTTP_200_OK)
+        pk = kwargs.get('pk')
+        if pk:
+            return self.retrieve(request, *args, **kwargs)
+        return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(
-            {"message": "Ahadi créé avec succès.", "data": serializer.data},
-            status=status.HTTP_201_CREATED
-        )
+        return Response({"message": "Ahadi créé avec succès.", "data": serializer.data}, status=201)
 
     def put(self, request, *args, **kwargs):
+        # récupère l'objet existant via get_object() qui utilise get_queryset() + pk
         return self.update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
@@ -642,7 +573,6 @@ class Ahadi_Mixins(
 
 
 # ======================== ETAT DE BESOIN =========================
-
 class EtatBesoin_Mixins(
     generics.GenericAPIView,
     mixins.CreateModelMixin,
@@ -652,73 +582,48 @@ class EtatBesoin_Mixins(
     mixins.ListModelMixin
 ):
 
-  # permission_classes = [IsAuthenticated, IsAbonnementValide]
-
-
     queryset = EtatBesoin.objects.all()
     serializer_class = EtatBesoinSerializer
     lookup_field = 'pk'
-    
 
     def get_queryset(self):
-        user = self.request.user
         eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
-
         if eglise_id:
             return EtatBesoin.objects.filter(user__eglise_id=eglise_id)
-        if not hasattr(user, "eglise") or user.eglise is None:
-            return EtatBesoin.objects.none()
-        return EtatBesoin.objects.filter(user__eglise=user.eglise)
-
-
+        return EtatBesoin.objects.none()
 
     def get(self, request, *args, **kwargs):
-
         pk = kwargs.get('pk')
         if pk is not None:
             return self.retrieve(request, *args, **kwargs)
-
         return self.list(request, *args, **kwargs)
-    
-    def post(self, request):
-        serializer = EtatBesoinSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Etat de besoin créé."})
-        return Response(serializer.errors, status=400)
-    
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Etat de besoin créé.", "data": serializer.data}, status=201)
+
     def put(self, request, *args, **kwargs):
-
         return self.update(request, *args, **kwargs)
-    
-    def delete(self, request, *args, **kwargs):
 
+    def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
 
 # ======================== Rapport Bilan =========================   
 
 
-class BilanAPIView(APIView):
-    def get(self, request, *args, **kwargs):
-        user = request.user
-        eglise_id = request.query_params.get('eglise_id')
 
-        if eglise_id:
-            prevision_qs = Prevoir.objects.select_related('descript_prevision').filter(
-                descript_prevision__user__eglise_id=eglise_id
-            )
-            paiement_qs = Payement_Offrande.objects.select_related('nom_offrande').filter(
-                nom_offrande__descript_recette__user__eglise_id=eglise_id
-            )
-        else:
-            if not hasattr(user, "eglise") or user.eglise is None:
-                return Response({'bilan_data': []}, status=status.HTTP_200_OK)
-            prevision_qs = Prevoir.objects.select_related('descript_prevision').filter(
-                descript_prevision__user__eglise=user.eglise
-            )
-            paiement_qs = Payement_Offrande.objects.select_related('nom_offrande').filter(
-                nom_offrande__descript_recette__user__eglise=user.eglise
-            )
+class BilanAPIView(APIView):
+
+    def get(self, request, eglise_id, *args, **kwargs):
+        prevision_qs = Prevoir.objects.select_related('descript_prevision').filter(
+            descript_prevision__user__eglise_id=eglise_id
+        )
+
+        paiement_qs = Payement_Offrande.objects.select_related('nom_offrande').filter(
+            nom_offrande__descript_recette__user__eglise_id=eglise_id
+        )
 
         grouped_previsions = prevision_qs.annotate(
             annee=ExtractYear('date_prevus')
@@ -739,28 +644,16 @@ class BilanAPIView(APIView):
             'type_monaie',
             'nom_offrande__nom_offrande'
         ).annotate(
-            total_recette=Coalesce(
-                Sum('montant', filter=Q(type_payement='in')),
-                Decimal('0.00'),
-                output_field=DecimalField()
-            ),
-            total_depense=Coalesce(
-                Sum('montant', filter=Q(type_payement='out')),
-                Decimal('0.00'),
-                output_field=DecimalField()
-            ),
+            total_recette=Coalesce(Sum('montant', filter=Q(type_payement='in')), Decimal('0.00'), output_field=DecimalField()),
+            total_depense=Coalesce(Sum('montant', filter=Q(type_payement='out')), Decimal('0.00'), output_field=DecimalField())
         )
 
         payments_dict = {}
         for item in paiement_totals_by_currency:
             key = (item['compte_rapprochement'], item['annee_payement'])
             if key not in payments_dict:
-                payments_dict[key] = {
-                    'libelle': item['nom_offrande__nom_offrande'],
-                    'par_devise': {}
-                }
-            devise = item['type_monaie']
-            payments_dict[key]['par_devise'][devise] = {
+                payments_dict[key] = {'libelle': item['nom_offrande__nom_offrande'], 'par_devise': {}}
+            payments_dict[key]['par_devise'][item['type_monaie']] = {
                 'recette': item['total_recette'],
                 'depense': item['total_depense']
             }
@@ -809,20 +702,17 @@ class BilanAPIView(APIView):
                             current_totals['recettes'][devise] = current_totals['recettes'].get(devise, Decimal('0.00')) + recette
                             current_totals['depenses'][devise] = current_totals['depenses'].get(devise, Decimal('0.00')) + depense
 
-            def format_totals(total_dict):
-                return {devise: montant for devise, montant in total_dict.items() if montant > 0}
-
             combined_data.append({
                 'num_ordre': num_ordre,
                 'description_prevision': group['descript_prevision__description_prevision'],
                 'annee_prevus': annee,
                 'total_prevus': group['total_prevus'],
-                'total_recettes_par_devise': format_totals(current_totals['recettes']),
-                'total_depenses_par_devise': format_totals(current_totals['depenses']),
+                'total_recettes_par_devise': {k: v for k, v in current_totals['recettes'].items() if v > 0},
+                'total_depenses_par_devise': {k: v for k, v in current_totals['depenses'].items() if v > 0},
                 'lignes': prevision_list + paiement_list
             })
 
-        return Response({'bilan_data': combined_data}, status=status.HTTP_200_OK)
+        return Response({'bilan_data': combined_data}, status=200)
 
 # =================== Rapport livre de caisse =======================================
 
@@ -872,6 +762,7 @@ class LivreCaisseAPIView(APIView):
 
 
 # =================== Rapport prevision =======================================
+
 class RapportPrevisionAPIView(APIView):
 
     permission_classes = [IsAuthenticated, IsAbonnementValide, IsSameChurch]
