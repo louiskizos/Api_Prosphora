@@ -564,6 +564,24 @@ class Ahadi_Mixins(
             "ahadi_data": serializer.data,
         }, status=status.HTTP_200_OK)
 
+    def get(self, request, *args, **kwargs):
+        if 'pk' in kwargs:
+            return self.retrieve(request, *args, **kwargs)
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Ahadi créé.", "data": serializer.data}, status=201)
+
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs, partial=True)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
+
 
 # ======================== ETAT DE BESOIN =========================
 
