@@ -380,39 +380,34 @@ class Groupe_Previsions_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
 ):
+
     queryset = Groupe_Previsions.objects.all()
     serializer_class = Groupe_PrevisionsSerializer
     lookup_field = 'pk'
 
-    # permission_classes = [IsAuthenticated, IsSameChurch]
-
     def get_queryset(self):
-        user = self.request.user
-        eglise_id = (
-            self.kwargs.get('eglise_id')
-            or self.request.query_params.get('eglise_id')
-        )
-
+        eglise_id = self.kwargs.get('eglise_id')
         if eglise_id:
             return Groupe_Previsions.objects.filter(user__eglise_id=eglise_id)
-
-        if getattr(user, "is_authenticated", False) and hasattr(user, "eglise") and user.eglise:
-            return Groupe_Previsions.objects.filter(user__eglise=user.eglise)
-
         return Groupe_Previsions.objects.none()
+
+    def get_serializer(self, *args, **kwargs):
+        kwargs['eglise_id'] = self.kwargs.get('eglise_id')
+        return super().get_serializer(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
         pk = kwargs.get('pk')
-        if pk is not None:
+        if pk:
             return self.retrieve(request, *args, **kwargs)
         return self.list(request, *args, **kwargs)
 
-    def post(self, request):
-        serializer = Groupe_PrevisionsSerializer(data=request.data)
+    def post(self, request, *args, **kwargs):
+        eglise_id = kwargs.get('eglise_id')
+        serializer = self.get_serializer(data=request.data, eglise_id=eglise_id)
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Groupe de prévision créé."})
-        return Response(serializer.errors, status=400)
+            return Response({"message": "Groupe de prévision créé avec succès."})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
