@@ -125,31 +125,29 @@ class Groupe_PrevisionsSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+
 class PrevoirSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prevoir
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
-        # On récupère le contexte et on retire eglise_id si jamais il a été passé depuis la vue
         eglise_id = kwargs.pop('eglise_id', None)
         super().__init__(*args, **kwargs)
 
-        request = self.context.get('request')
+        request = self.context.get('request', None)
         user = getattr(request, "user", None)
 
-        # Si le serializer est instancié depuis la vue avec un eglise_id
         if eglise_id:
-            self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.filter(
-                user__eglise_id=eglise_id
+            self.fields['descript_prevision'].queryset = (
+                self.fields['descript_prevision'].queryset.filter(user__eglise_id=eglise_id)
             )
-        # Sinon si le user connecté a une église
         elif user and hasattr(user, "eglise") and user.eglise:
-            self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.filter(
-                user__eglise=user.eglise
+            self.fields['descript_prevision'].queryset = (
+                self.fields['descript_prevision'].queryset.filter(user__eglise=user.eglise)
             )
         else:
-            self.fields['descript_prevision'].queryset = Groupe_Previsions.objects.none()
+            self.fields['descript_prevision'].queryset = self.fields['descript_prevision'].queryset.none()
 
 
 class AhadiSerializer(serializers.ModelSerializer):
