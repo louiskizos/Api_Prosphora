@@ -180,10 +180,10 @@ class Church_Mixins(
             return Response({"message": "Église créée avec succès.", "data": serializer.data}, status=status.HTTP_201_CREATED)
     
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def patch(self, request, *args, **kwargs):
+            return self.update(request, *args, **kwargs, partial=True)
 
-    def put(self, request, *args, **kwargs):
-
-        return self.update(request, *args, **kwargs)
     
     def delete(self, request, *args, **kwargs):
 
@@ -239,9 +239,9 @@ class Abonnement_Mixins(
             return Response({"message": "Abonnement créé."})
         return Response(serializer.errors, status=400)
     
-    def put(self, request, *args, **kwargs):
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs, partial=True)
 
-        return self.update(request, *args, **kwargs)
     
     def delete(self, request, *args, **kwargs):
 
@@ -296,10 +296,9 @@ class Groupe_Offrandes_Mixins(
             return Response({"message": "Groupe d'offrande créé."})
         return Response(serializer.errors, status=400)
     
-    def put(self, request, *args, **kwargs):
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs, partial=True)
 
-        return self.update(request, *args, **kwargs)
-    
     def delete(self, request, *args, **kwargs):
 
         return self.destroy(request, *args, **kwargs)
@@ -361,9 +360,9 @@ class Offrande_Mixins(
         return Response({"message": "Offrande créée avec succès.", "data": serializer.data},
                         status=status.HTTP_201_CREATED)
 
-    def put(self, request, *args, **kwargs):
-        
-        return self.update(request, *args, **kwargs)
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs, partial=True)
+
 
     def delete(self, request, *args, **kwargs):
         """
@@ -380,7 +379,6 @@ class Groupe_Previsions_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
 ):
-
     queryset = Groupe_Previsions.objects.all()
     serializer_class = Groupe_PrevisionsSerializer
     lookup_field = 'pk'
@@ -391,9 +389,10 @@ class Groupe_Previsions_Mixins(
             return Groupe_Previsions.objects.filter(user__eglise_id=eglise_id)
         return Groupe_Previsions.objects.none()
 
-    def get_serializer(self, *args, **kwargs):
-        kwargs['eglise_id'] = self.kwargs.get('eglise_id')
-        return super().get_serializer(*args, **kwargs)
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['eglise_id'] = self.kwargs.get('eglise_id')
+        return context
 
     def get(self, request, *args, **kwargs):
         pk = kwargs.get('pk')
@@ -402,21 +401,19 @@ class Groupe_Previsions_Mixins(
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        eglise_id = kwargs.get('eglise_id')
-        serializer = self.get_serializer(data=request.data, eglise_id=eglise_id)
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Groupe de prévision créé avec succès."})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def put(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
+    def patch(self, request, *args, **kwargs):
+            return self.update(request, *args, **kwargs, partial=True)
 
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
-    
+  
 # ======================== PREVOIR =========================
-
 class Prevoir_Mixins(
     generics.GenericAPIView,
     mixins.CreateModelMixin,
@@ -425,50 +422,41 @@ class Prevoir_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
 ):
-
-  #  permission_classes = [IsAuthenticated, IsSameChurch]
-
-
     queryset = Prevoir.objects.all()
     serializer_class = PrevoirSerializer
     lookup_field = 'pk'
-    
 
     def get_queryset(self):
-        user = self.request.user
-        eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
-
+        eglise_id = self.kwargs.get('eglise_id')
         if eglise_id:
             return Prevoir.objects.filter(descript_prevision__user__eglise_id=eglise_id)
-        if not hasattr(user, "eglise") or user.eglise is None:
-            return Prevoir.objects.none()
-        return Prevoir.objects.filter(descript_prevision__user__eglise=user.eglise)
+        return Prevoir.objects.none()
 
-
+    def get_serializer_context(self):
+        
+        context = super().get_serializer_context()
+        context['eglise_id'] = self.kwargs.get('eglise_id')
+        return context
 
     def get(self, request, *args, **kwargs):
-
         pk = kwargs.get('pk')
-        if pk is not None:
+        if pk:
             return self.retrieve(request, *args, **kwargs)
-
         return self.list(request, *args, **kwargs)
-    
-    def post(self, request):
-        serializer = PrevoirSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Prévoir créé."})
-        return Response(serializer.errors, status=400)
-    
-    def put(self, request, *args, **kwargs):
 
-        return self.update(request, *args, **kwargs)
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Prévoir créé.", "data": serializer.data}, status=201)
+
     
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs, partial=True)
+
+
     def delete(self, request, *args, **kwargs):
-
-        return self.destroy(request, *args, **kwargs)   
-    
+        return self.destroy(request, *args, **kwargs)
 
 
 # ======================== PAYEMENT =========================
@@ -522,13 +510,15 @@ class Payement_Offrande_Mixins(
             return Response({"message": "Payement créé."})
         return Response(serializer.errors, status=400)
 
-    def put(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
+    
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs, partial=True)
 
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
 
 # ======================== AHADI =========================
+
 class Ahadi_Mixins(
     mixins.CreateModelMixin,
     mixins.RetrieveModelMixin,
@@ -543,31 +533,40 @@ class Ahadi_Mixins(
     def get_queryset(self):
         eglise_id = self.kwargs.get('eglise_id')
         if not eglise_id:
-            return Ahadi.objects.none()  # Obligatoire de passer eglise_id
-
+            return Ahadi.objects.none()
         return Ahadi.objects.filter(nom_offrande__descript_recette__user__eglise_id=eglise_id)
 
     def get(self, request, *args, **kwargs):
-        pk = kwargs.get('pk')
-        if pk:
-            return self.retrieve(request, *args, **kwargs)
-        return self.list(request, *args, **kwargs)
+        queryset = self.get_queryset()
 
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({"message": "Ahadi créé avec succès.", "data": serializer.data}, status=201)
+        # Subquery pour total payé
+        paiements = Payement_Offrande.objects.filter(
+            type_payement="in",
+            nom_offrande=OuterRef('nom_offrande'),
+            departement=OuterRef('nom_postnom'),
+        ).filter(
+            Q(nom_offrande__descript_recette__description_recette="Les engagement des adhérents") |
+            Q(nom_offrande__descript_recette__description_recette="LES ENGAGEMENTS DES ADHERENTS")
+        ).values('nom_offrande', 'departement').annotate(
+            total=Sum('montant')
+        ).values('total')
 
-    def put(self, request, *args, **kwargs):
-        # récupère l'objet existant via get_object() qui utilise get_queryset() + pk
-        return self.update(request, *args, **kwargs)
+        queryset = queryset.annotate(
+            total_paye=Subquery(paiements, output_field=DecimalField(max_digits=15, decimal_places=2))
+        )
 
-    def delete(self, request, *args, **kwargs):
-        return self.destroy(request, *args, **kwargs)
+        # Calcul du reste
+        for obj in queryset:
+            obj.reste = (obj.montant or 0) - (obj.total_paye or 0)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            "ahadi_data": serializer.data,
+        }, status=status.HTTP_200_OK)
 
 
 # ======================== ETAT DE BESOIN =========================
+
 class EtatBesoin_Mixins(
     generics.GenericAPIView,
     mixins.CreateModelMixin,
@@ -576,20 +575,23 @@ class EtatBesoin_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
 ):
-
     queryset = EtatBesoin.objects.all()
     serializer_class = EtatBesoinSerializer
     lookup_field = 'pk'
 
     def get_queryset(self):
+        # On récupère l'ID de l'église si présent
         eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
-        if eglise_id:
+
+        # Si on liste (pas de pk dans kwargs), filtrer par eglise_id
+        if 'pk' not in self.kwargs and eglise_id:
             return EtatBesoin.objects.filter(user__eglise_id=eglise_id)
-        return EtatBesoin.objects.none()
+
+        # Pour retrieve, update, delete : ne pas filtrer par eglise_id
+        return EtatBesoin.objects.all()
 
     def get(self, request, *args, **kwargs):
-        pk = kwargs.get('pk')
-        if pk is not None:
+        if 'pk' in kwargs:
             return self.retrieve(request, *args, **kwargs)
         return self.list(request, *args, **kwargs)
 
@@ -599,8 +601,10 @@ class EtatBesoin_Mixins(
         serializer.save()
         return Response({"message": "Etat de besoin créé.", "data": serializer.data}, status=201)
 
-    def put(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
+    # def put(self, request, *args, **kwargs):
+    #     return self.update(request, *args, **kwargs)
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs, partial=True)
 
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)

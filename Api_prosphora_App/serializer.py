@@ -30,12 +30,6 @@ class PayementOffrandeSerializer(serializers.ModelSerializer):
             )
 
 
-# Sérialiseur pour Prevoir
-class PrevoirSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Prevoir
-        fields = ['descript_prevision', 'montant_prevus', 'annee_prevus']
-
 
 
 class ChurchSerializer(serializers.ModelSerializer):
@@ -120,27 +114,32 @@ class Groupe_PrevisionsSerializer(serializers.ModelSerializer):
         model = Groupe_Previsions
         fields = '__all__'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        eglise_id = self.context.get('eglise_id')
+        if eglise_id:
+            self.fields['user'].queryset = self.fields['user'].queryset.filter(eglise_id=eglise_id)
+        else:
+            self.fields['user'].queryset = self.fields['user'].queryset.none()
+
 
 class PrevoirSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prevoir
-        fields = '__all__'
+        fields = ['descript_prevision', 'montant_prevus', 'annee_prevus']
 
     def __init__(self, *args, **kwargs):
-        eglise_id = kwargs.pop('eglise_id', None)
         super().__init__(*args, **kwargs)
-
-        request = self.context.get('request', None)
-        user = getattr(request, "user", None)
+        
+        eglise_id = self.context.get('eglise_id')
 
         if eglise_id:
-            self.fields['descript_recette'].queryset = (
-                self.fields['descript_recette'].queryset.filter(user__eglise_id=eglise_id)
+            self.fields['descript_prevision'].queryset = (
+                self.fields['descript_prevision'].queryset.filter(user__eglise_id=eglise_id)
             )
-        elif user and hasattr(user, "eglise"):
-            self.fields['descript_recette'].queryset = (
-                self.fields['descript_recette'].queryset.filter(user__eglise=user.eglise)
-            )
+        else:
+            self.fields['descript_prevision'].queryset = self.fields['descript_prevision'].queryset.none()
+
 
 
 class AhadiSerializer(serializers.ModelSerializer):
