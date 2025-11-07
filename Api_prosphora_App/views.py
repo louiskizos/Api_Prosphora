@@ -201,7 +201,7 @@ class Abonnement_Mixins(
     mixins.ListModelMixin
 ):
 
-    permission_classes = [IsAuthenticated]
+   # permission_classes = [IsAuthenticated]
 
 
     queryset = Abonnement.objects.all()
@@ -216,12 +216,25 @@ class Abonnement_Mixins(
         queryset = Abonnement.objects.all()
 
         if id_eglise:
-            queryset = queryset.filter(eglise__id=id_eglise)
+            queryset = queryset.filter(eglise_id=id_eglise)
         if pk:
             queryset = queryset.filter(pk=pk)
 
         return queryset
-    
+    # def get_queryset(self):
+
+    #     user = self.request.user
+    #     eglise_id = self.kwargs.get('eglise_id', None)
+
+    #     if eglise_id:
+    #         return Abonnement.objects.filter(user__eglise_id=eglise_id)
+
+    #     if hasattr(user, "eglise") and user.eglise:
+    #         return Abonnement.objects.filter(user__eglise=user.eglise)
+
+    #     return Abonnement.objects.none()
+
+
 
 
     def get(self, request, *args, **kwargs):
@@ -564,10 +577,6 @@ class Ahadi_Mixins(
             "ahadi_data": serializer.data,
         }, status=status.HTTP_200_OK)
 
-    def get(self, request, *args, **kwargs):
-        if 'pk' in kwargs:
-            return self.retrieve(request, *args, **kwargs)
-        return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

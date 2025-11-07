@@ -126,7 +126,7 @@ class Groupe_PrevisionsSerializer(serializers.ModelSerializer):
 class PrevoirSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prevoir
-        fields = ['descript_prevision', 'montant_prevus', 'date_prevus']
+        fields = '__all__'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
