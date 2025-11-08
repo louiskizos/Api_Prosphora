@@ -261,8 +261,6 @@ class Abonnement_Mixins(
         return self.destroy(request, *args, **kwargs)
 
 # ======================== GROUPE OFFRANDE =========================
-
-
 class Groupe_Offrandes_Mixins(
     generics.GenericAPIView,
     mixins.CreateModelMixin,
@@ -271,49 +269,35 @@ class Groupe_Offrandes_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
 ):
-
- #  permission_classes = [IsAuthenticated]
-
-
     queryset = Groupe_Offrandes.objects.all()
     serializer_class = Groupe_OffrandesSerializer
     lookup_field = 'pk'
-    
 
     def get_queryset(self):
-        user = self.request.user
-        eglise_id = self.kwargs.get('eglise_id', None)
-
+        eglise_id = self.kwargs.get('eglise_id')
         if eglise_id:
             return Groupe_Offrandes.objects.filter(user__eglise_id=eglise_id)
-
-        if hasattr(user, "eglise") and user.eglise:
-            return Groupe_Offrandes.objects.filter(user__eglise=user.eglise)
-
         return Groupe_Offrandes.objects.none()
 
+    def get_serializer_context(self):
+        
+        context = super().get_serializer_context()
+        context['eglise_id'] = self.kwargs.get('eglise_id')
+        return context
 
     def get(self, request, *args, **kwargs):
-
         pk = kwargs.get('pk')
-        if pk is not None:
+        if pk:
             return self.retrieve(request, *args, **kwargs)
-
         return self.list(request, *args, **kwargs)
-    
-    
-    def post(self, request):
-        serializer = Groupe_OffrandesSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Groupe d'offrande créé."})
-        return Response(serializer.errors, status=400)
-    
+
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
     def patch(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs, partial=True)
 
     def delete(self, request, *args, **kwargs):
-
         return self.destroy(request, *args, **kwargs)
     
 # ======================== SORTE OFFRANDE =========================
@@ -649,49 +633,84 @@ class EtatBesoin_Mixins(
 # ======================== Rapport Bilan =========================   
 
 
-
 class BilanAPIView(APIView):
 
     def get(self, request, eglise_id, *args, **kwargs):
-        prevision_qs = Prevoir.objects.select_related('descript_prevision').filter(
-            descript_prevision__user__eglise_id=eglise_id
+        # --- Prévisions ---
+        prevision_qs = (
+            Prevoir.objects
+            .select_related('descript_prevision')
+            .filter(descript_prevision__user__eglise_id=eglise_id)
         )
 
-        paiement_qs = Payement_Offrande.objects.select_related('nom_offrande').filter(
-            nom_offrande__descript_recette__user__eglise_id=eglise_id
+        # --- Paiements ---
+        paiement_qs = (
+            Payement_Offrande.objects
+            .select_related('nom_offrande')
+            .filter(nom_offrande__descript_recette__user__eglise_id=eglise_id)
         )
 
-        grouped_previsions = prevision_qs.annotate(
-            annee=ExtractYear('date_prevus')
-        ).values(
-            'descript_prevision__num_ordre',
-            'descript_prevision__description_prevision',
-            'annee'
-        ).annotate(
-            total_prevus=Coalesce(Sum('montant_prevus'), Decimal('0.00'), output_field=DecimalField())
-        ).order_by('descript_prevision__num_ordre', 'annee')
+        # --- Regrouper les prévisions ---
+        grouped_previsions = (
+            prevision_qs.annotate(annee=ExtractYear('date_prevus'))
+            .values(
+                'descript_prevision__num_ordre',
+                'descript_prevision__description_prevision',
+                'annee'
+            )
+            .annotate(
+                total_prevus=Coalesce(
+                    Sum('montant_prevus'),
+                    Decimal('0.00'),
+                    output_field=DecimalField()
+                )
+            )
+            .order_by('descript_prevision__num_ordre', 'annee')
+        )
 
-        paiement_totals_by_currency = paiement_qs.annotate(
-            annee_payement=ExtractYear('date_payement'),
-            compte_rapprochement=Cast('nom_offrande__num_compte', output_field=BigIntegerField())
-        ).values(
-            'compte_rapprochement',
-            'annee_payement',
-            'type_monaie',
-            'nom_offrande__nom_offrande'
-        ).annotate(
-            total_recette=Coalesce(Sum('montant', filter=Q(type_payement='in')), Decimal('0.00'), output_field=DecimalField()),
-            total_depense=Coalesce(Sum('montant', filter=Q(type_payement='out')), Decimal('0.00'), output_field=DecimalField())
+        # --- Totaux paiements par compte, devise, année ---
+        paiement_totals_by_currency = (
+            paiement_qs.annotate(
+                annee_payement=ExtractYear('date_payement'),
+                compte_rapprochement=Cast(
+                    'nom_offrande__num_compte', output_field=BigIntegerField()
+                )
+            )
+            .values(
+                'compte_rapprochement',
+                'annee_payement',
+                'type_monaie',
+                'nom_offrande__nom_offrande'
+            )
+            .annotate(
+                total_recette=Coalesce(
+                    Sum('montant', filter=Q(type_payement='in')),
+                    Decimal('0.00'),
+                    output_field=DecimalField()
+                ),
+                total_depense=Coalesce(
+                    Sum('montant', filter=Q(type_payement='out')),
+                    Decimal('0.00'),
+                    output_field=DecimalField()
+                )
+            )
         )
 
         payments_dict = {}
         for item in paiement_totals_by_currency:
-            key = (item['compte_rapprochement'], item['annee_payement'])
+
+            compte_cle = str(item['compte_rapprochement']).lstrip('0')
+            key = (compte_cle, item['annee_payement'])
+
             if key not in payments_dict:
-                payments_dict[key] = {'libelle': item['nom_offrande__nom_offrande'], 'par_devise': {}}
+                payments_dict[key] = {
+                    'libelle': item['nom_offrande__nom_offrande'],
+                    'par_devise': {}
+                }
+
             payments_dict[key]['par_devise'][item['type_monaie']] = {
                 'recette': item['total_recette'],
-                'depense': item['total_depense']
+                'depense': item['total_depense'],
             }
 
         combined_data = []
@@ -721,12 +740,15 @@ class BilanAPIView(APIView):
                 })
 
             for compte in num_comptes:
-                key = (compte, annee)
+                compte_cle = str(compte).lstrip('0')
+                key = (compte_cle, annee)
                 payment_data = payments_dict.get(key)
+
                 if payment_data:
                     for devise, totaux in payment_data['par_devise'].items():
                         recette = totaux['recette']
                         depense = totaux['depense']
+
                         if recette > 0 or depense > 0:
                             paiement_list.append({
                                 'libelle': f"{payment_data['libelle']} ({devise})",
@@ -735,6 +757,8 @@ class BilanAPIView(APIView):
                                 'depense': depense,
                                 'prevision': '-',
                             })
+
+
                             current_totals['recettes'][devise] = current_totals['recettes'].get(devise, Decimal('0.00')) + recette
                             current_totals['depenses'][devise] = current_totals['depenses'].get(devise, Decimal('0.00')) + depense
 
@@ -743,13 +767,17 @@ class BilanAPIView(APIView):
                 'description_prevision': group['descript_prevision__description_prevision'],
                 'annee_prevus': annee,
                 'total_prevus': group['total_prevus'],
-                'total_recettes_par_devise': {k: v for k, v in current_totals['recettes'].items() if v > 0},
-                'total_depenses_par_devise': {k: v for k, v in current_totals['depenses'].items() if v > 0},
+                'total_recettes_par_devise': {
+                    k: v for k, v in current_totals['recettes'].items() if v > 0
+                },
+                'total_depenses_par_devise': {
+                    k: v for k, v in current_totals['depenses'].items() if v > 0
+                },
                 'lignes': prevision_list + paiement_list
             })
 
         return Response({'bilan_data': combined_data}, status=200)
-
+    
 # =================== Rapport livre de caisse =======================================
 
 
