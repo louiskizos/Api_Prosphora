@@ -384,48 +384,58 @@ class Offrande_Mixins(
         return self.destroy(request, *args, **kwargs)
     
 # ======================== GROUPE PREVISION =========================
+
 class Groupe_Previsions_Mixins(
-    generics.GenericAPIView,
     mixins.CreateModelMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
-    mixins.ListModelMixin
+    mixins.ListModelMixin,
+    generics.GenericAPIView
 ):
     queryset = Groupe_Previsions.objects.all()
     serializer_class = Groupe_PrevisionsSerializer
     lookup_field = 'pk'
 
     def get_queryset(self):
+
         eglise_id = self.kwargs.get('eglise_id')
         if eglise_id:
             return Groupe_Previsions.objects.filter(user__eglise_id=eglise_id)
-        return Groupe_Previsions.objects.none()
+        return Groupe_Previsions.objects.all()
 
     def get_serializer_context(self):
+
         context = super().get_serializer_context()
         context['eglise_id'] = self.kwargs.get('eglise_id')
         return context
 
     def get(self, request, *args, **kwargs):
+
         pk = kwargs.get('pk')
         if pk:
             return self.retrieve(request, *args, **kwargs)
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+
+        eglise_id = kwargs.get('eglise_id')
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Groupe de prévision créé avec succès."})
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()  
+        return Response(
+            {"message": f"Groupe de prévision créé pour l’église {eglise_id}.", "data": serializer.data},
+            status=status.HTTP_201_CREATED
+        )
 
     def patch(self, request, *args, **kwargs):
-            return self.update(request, *args, **kwargs, partial=True)
+        """PATCH : mise à jour partielle"""
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
+        """DELETE : suppression"""
         return self.destroy(request, *args, **kwargs)
-  
 # ======================== PREVOIR =========================
 class Prevoir_Mixins(
     generics.GenericAPIView,
