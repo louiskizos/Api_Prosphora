@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-from decouple import config
+from dotenv import load_dotenv
 import dj_database_url
 
 
@@ -25,12 +25,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+# Charge les variables d'environnement depuis .env
+load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+SECRET_KEY = os.getenv("SECRET_KEY", "changeme")
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+SECRET_KEY = os.getenv("SECRET_KEY", "changeme")
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
 
 # Application definition
@@ -132,12 +139,15 @@ AUTH_USER_MODEL = "Api_prosphora_App.App_user"
 #     }
 # }
 
-
 DATABASES = {
     'default': dj_database_url.parse(
-        "postgresql://prospora_api_db_s74y_user:ogrMoA3qrwXuS3tqgP9JtmaGv4NpEwFC@dpg-d41097vdiees73am0tu0-a.oregon-postgres.render.com/prospora_api_db_s74y"
+        os.getenv("DATABASE_URL"),
+        conn_max_age=600,  
+        ssl_require=True   
     )
 }
+
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
