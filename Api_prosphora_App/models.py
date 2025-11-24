@@ -151,7 +151,7 @@ class EtatBesoin(models.Model):
     type_monaie = models.CharField(max_length=100, default="CDF")
     quantite = models.CharField(max_length=100)
     motif = models.TextField()
-    date_etat_besoin = models.DateField(auto_now_add=True)
+    date_etat_besoin = models.DateField()
     validation_pasteur = models.BooleanField(default=False)
     validation_caisse = models.BooleanField(default=False)
     user = models.ForeignKey(
@@ -160,8 +160,6 @@ class EtatBesoin(models.Model):
     )
     def __str__(self):
         return self.service
-
-
 
 
 
