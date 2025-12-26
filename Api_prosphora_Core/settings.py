@@ -8,21 +8,16 @@ from dotenv import load_dotenv
 from datetime import timedelta
 
 import dj_database_url
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Charge les variables d'environnement
 load_dotenv()
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback-insecure-key-for-dev-only")
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
-# Application definition
 INSTALLED_APPS = [
     'corsheaders',
     'django.contrib.admin',
