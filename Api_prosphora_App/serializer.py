@@ -255,7 +255,7 @@ class Quarante_PourcentSerializer(serializers.ModelSerializer):
     #derniere_date_payement = serializers.DateField(read_only=True)
    # derniere_date_payement = serializers.DateTimeField(read_only=True)
 
-    derniere_date = serializers.SerializerMethodField()
+    derniere_date = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = Quarante_Pourcent
         fields = [
