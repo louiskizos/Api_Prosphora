@@ -252,8 +252,6 @@ class Quarante_PourcentSerializer(serializers.ModelSerializer):
         decimal_places=2,
         read_only=True
     )
-    #derniere_date_payement = serializers.DateField(read_only=True)
-   # derniere_date_payement = serializers.DateTimeField(read_only=True)
 
     derniere_date = serializers.SerializerMethodField(read_only=True)
     class Meta:
@@ -264,12 +262,10 @@ class Quarante_PourcentSerializer(serializers.ModelSerializer):
             "offrande",    
             "total_paye",
             "quarante_pourcent",
-          #  "derniere_date_payement",
             "derniere_date",
             "user",
         ]
 
+
     def get_derniere_date(self, obj):
-        if obj.derniere_date_payement:
-            return obj.derniere_date_payement.date()
-        return None
+        return obj.derniere_date_payement
