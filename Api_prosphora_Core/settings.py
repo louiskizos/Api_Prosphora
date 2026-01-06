@@ -93,21 +93,21 @@ WSGI_APPLICATION = 'Api_prosphora_Core.wsgi.application'
 AUTH_USER_MODEL = "Api_prosphora_App.App_user"
 
 
-DATABASES = {
-    'default': dj_database_url.parse(
-        os.getenv("DATABASE_URL"),
-        conn_max_age=600,  
-        ssl_require=True   
-    )
-}
-
-
 # DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
+#     'default': dj_database_url.parse(
+#         os.getenv("DATABASE_URL"),
+#         conn_max_age=600,  
+#         ssl_require=True   
+#     )
 # }
+
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 
 
 # Password validation

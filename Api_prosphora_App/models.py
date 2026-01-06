@@ -122,6 +122,19 @@ class Payement_Offrande(models.Model):
     motif = models.CharField(max_length=255,)
     date_payement = models.DateField()
 
+# === 40% =====
+class Quarante_Pourcent(models.Model):
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    nom_offrande = models.ForeignKey(Sorte_Offrande, on_delete=models.CASCADE)
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE, default="1"
+    )
+  
+
+
 # === Ahadi ===
 class Ahadi(models.Model):
     

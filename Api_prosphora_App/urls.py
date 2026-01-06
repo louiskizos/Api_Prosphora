@@ -67,6 +67,12 @@ urlpatterns = [
     path('delete_etat_besoin/<int:eglise_id>/<str:pk>/', EtatBesoin_Mixins.as_view(), name='delete_etat_besoin'),
     path('update_etat_besoin/<int:eglise_id>/<str:pk>/', EtatBesoin_Mixins.as_view(), name='update_etat_besoin'),
 
+# ============ Quarante Pourcent  ===============
+    path('quarante_pourcent/<int:eglise_id>/', Quarante_Pourcent_Mixins.as_view(), name='liste-equarante_pourcent'),
+    path('delete_quarante_pourcent/<int:eglise_id>/<str:pk>/', Quarante_Pourcent_Mixins.as_view(), name='delete_quarante_pourcent'),
+    path('update_quarante_pourcent/<int:eglise_id>/<str:pk>/', Quarante_Pourcent_Mixins.as_view(), name='update_quarante_pourcent'),
+
+
 
 # ============= Bilan ====================
 

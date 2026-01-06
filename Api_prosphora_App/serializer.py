@@ -4,8 +4,8 @@ from .models import *
 
 
 
-
 class PayementOffrandeSerializer(serializers.ModelSerializer):
+
     num_compte = serializers.CharField(source='nom_offrande.num_compte', read_only=True)
     nom_offrande_nom = serializers.CharField(source='nom_offrande.nom_offrande', read_only=True)
 
@@ -20,14 +20,19 @@ class PayementOffrandeSerializer(serializers.ModelSerializer):
         request = self.context.get('request', None)
         user = getattr(request, "user", None)
 
-        if eglise_id:
-            self.fields['descript_recette'].queryset = (
-                self.fields['descript_recette'].queryset.filter(user__eglise_id=eglise_id)
-            )
-        elif user and hasattr(user, "eglise"):
-            self.fields['descript_recette'].queryset = (
-                self.fields['descript_recette'].queryset.filter(user__eglise=user.eglise)
-            )
+        if 'nom_offrande' in self.fields:
+            if eglise_id:
+                self.fields['nom_offrande'].queryset = (
+                    self.fields['nom_offrande'].queryset.filter(
+                        descript_recette__user__eglise_id=eglise_id
+                    )
+                )
+            elif user and hasattr(user, "eglise") and user.eglise:
+                self.fields['nom_offrande'].queryset = (
+                    self.fields['nom_offrande'].queryset.filter(
+                        descript_recette__user__eglise=user.eglise
+                    )
+                )
 
 
 
@@ -179,3 +184,92 @@ class EtatBesoinSerializer(serializers.ModelSerializer):
     class Meta:
         model = EtatBesoin
         fields = '__all__'
+
+
+# class Quarante_PourcentSerializer(serializers.ModelSerializer):
+#     nom_offrande = serializers.CharField(source='nom_offrande.nom_offrande', read_only=True)
+
+#     total_paye = serializers.DecimalField(
+#         max_digits=15,
+#         decimal_places=2,
+#         read_only=True
+#     )
+#     # quarante_pourcent = serializers.DecimalField(
+#     #     max_digits=15,
+#     #     decimal_places=2,
+#     #     read_only=True
+#     # )
+
+
+#     class Meta:
+#         model = Quarante_Pourcent
+#         fields = '__all__'
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         eglise_id = self.context.get('eglise_id')
+#         if eglise_id:
+#             self.fields['user'].queryset = self.fields['user'].queryset.filter(eglise_id=eglise_id)
+#         else:
+#             self.fields['user'].queryset = self.fields['user'].queryset.none()
+
+
+# class Quarante_PourcentSerializer(serializers.ModelSerializer):
+    
+#     nom_offrande = serializers.CharField(source='nom_offrande.nom_offrande', read_only=True)
+
+#     total_paye = serializers.DecimalField(
+#         max_digits=15,
+#         decimal_places=2,
+#         read_only=True
+#     )
+#     quarante_pourcent = serializers.DecimalField(
+#         max_digits=15,
+#         decimal_places=2,
+#         read_only=True
+#     )
+
+#     class Meta:
+#         model = Quarante_Pourcent
+#         fields = "__all__"
+
+from rest_framework import serializers
+
+class Quarante_PourcentSerializer(serializers.ModelSerializer):
+    
+    offrande = serializers.CharField(
+        source='nom_offrande.nom_offrande',
+        read_only=True
+    )
+
+    total_paye = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        read_only=True
+    )
+
+    quarante_pourcent = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        read_only=True
+    )
+
+    derniere_date_payement = serializers.DateTimeField(
+        
+        read_only=True
+    )
+#     derniere_date_payement = serializers.DateField(
+#     source='date_payement',
+#     read_only=True
+# )
+
+    class Meta:
+        model = Quarante_Pourcent
+        fields = [
+            "id",
+            "nom_offrande",        # ID de la FK
+            "offrande",    # Nom lisible
+            "total_paye",
+            "quarante_pourcent",
+            "derniere_date_payement",
+            "user",
+        ]

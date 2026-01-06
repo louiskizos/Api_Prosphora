@@ -1,15 +1,14 @@
 from rest_framework.views import APIView
-from rest_framework.response import Response
 from .serializer import *
 from .models import *
-from rest_framework import generics, mixins
+from rest_framework import generics, mixins, status
 from .permissions import IsAbonnementValide, IsSameChurch
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import logout
 from django.contrib.auth import authenticate, login
 from rest_framework.response import Response
 from rest_framework import status
-from django.db.models import Sum, Q, OuterRef, Subquery, Sum, DecimalField, BigIntegerField
+from django.db.models import Sum, Q, OuterRef, Subquery, Sum, DecimalField, BigIntegerField, F, ExpressionWrapper, Value
 from decimal import Decimal
 from django.db.models.functions import Coalesce, ExtractYear, Cast
 from django.views.decorators.csrf import csrf_exempt
@@ -17,13 +16,9 @@ from django.contrib.auth import authenticate, login
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import os
-from datetime import datetime
-from django.http import FileResponse
 from django.http import FileResponse
 from django.core import management
 import tempfile
-from django.http import FileResponse
-from django.core import management
 
 
 
@@ -420,6 +415,7 @@ class Groupe_Previsions_Mixins(
     def delete(self, request, *args, **kwargs):
         """DELETE : suppression"""
         return self.destroy(request, *args, **kwargs)
+    
 # ======================== PREVOIR =========================
 class Prevoir_Mixins(
     generics.GenericAPIView,
@@ -471,7 +467,6 @@ class Prevoir_Mixins(
 class Payement_Offrande_Mixins(
     generics.GenericAPIView,
     mixins.CreateModelMixin,
-    mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
@@ -479,7 +474,6 @@ class Payement_Offrande_Mixins(
     queryset = Payement_Offrande.objects.all()
     serializer_class = PayementOffrandeSerializer
     lookup_field = 'pk'
-    # permission_classes = [IsAuthenticated, IsSameChurch]
 
     def get_queryset(self):
         user = self.request.user
@@ -506,23 +500,38 @@ class Payement_Offrande_Mixins(
 
     def get(self, request, *args, **kwargs):
         pk = kwargs.get('pk')
+
+        # 🔒 On remplace retrieve() de DRF
         if pk:
-            return self.retrieve(request, *args, **kwargs)
-        return self.list(request, *args, **kwargs)
+            instance = self.get_queryset().first()
+            if not instance:
+                return Response({"detail": "Not found"}, status=404)
+
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def post(self, request, *args, **kwargs):
-        serializer = PayementOffrandeSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Payement créé."})
-        return Response(serializer.errors, status=400)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Payement créé."})
 
-    
     def patch(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs, partial=True)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
     def delete(self, request, *args, **kwargs):
-        return self.destroy(request, *args, **kwargs)
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=204)
+
 
 # ======================== AHADI =========================
 
@@ -629,6 +638,97 @@ class EtatBesoin_Mixins(
 
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
+    
+# ======================== 40 % =========================
+from django.db.models import Max, DateTimeField
+
+
+class Quarante_Pourcent_Mixins(
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+    generics.GenericAPIView
+):
+    serializer_class = Quarante_PourcentSerializer
+    lookup_field = 'pk'
+
+    def get_queryset(self):
+        eglise_id = self.kwargs.get('eglise_id')
+        if not eglise_id:
+            return Quarante_Pourcent.objects.none()
+
+        return Quarante_Pourcent.objects.filter(
+            nom_offrande__descript_recette__user__eglise_id=eglise_id
+        )
+
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+
+        paiements_total = Payement_Offrande.objects.filter(
+            type_payement="in",
+            nom_offrande=OuterRef('nom_offrande'),
+        ).values('nom_offrande').annotate(
+            total=Sum('montant')
+        ).values('total')
+
+        derniere_date = Payement_Offrande.objects.filter(
+            type_payement="in",
+            nom_offrande=OuterRef('nom_offrande')
+        ).values('nom_offrande').annotate(
+            derniere=Max('date_payement')
+        ).values('derniere')
+
+        queryset = queryset.annotate(
+            total_paye=Coalesce(
+                Subquery(
+                    paiements_total,
+                    output_field=DecimalField(max_digits=15, decimal_places=2)
+                ),
+                Value(Decimal('0.00'), output_field=DecimalField(max_digits=15, decimal_places=2))
+            ),
+
+            quarante_pourcent=ExpressionWrapper(
+                F('total_paye') * Value(
+                    Decimal('0.40'),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)
+                ),
+                output_field=DecimalField(max_digits=15, decimal_places=2)
+            ),
+
+            derniere_date_payement=Subquery(
+                derniere_date,
+                output_field=DateTimeField()
+            )
+        )
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(
+            {"data": serializer.data},
+            status=status.HTTP_200_OK
+        )
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(
+            {"data": serializer.data},
+            status=status.HTTP_200_OK
+        )
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Quarante pourcent créé.", "datas": serializer.data}, status=201)
+
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs, partial=True)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
+
 
 # ======================== Rapport Bilan =========================   
 
@@ -817,6 +917,7 @@ class LivreCaisseAPIView(APIView):
                 'nom_offrande': str(item.nom_offrande),
                 'num_compte': str(item.nom_offrande.num_compte),
                 'type_payement': item.type_payement,
+                'motif': item.motif,
                 'type_monaie': monnaie,
                 'montant': montant,
                 'cumulative_sum': cumulative_sums_by_currency[monnaie],
