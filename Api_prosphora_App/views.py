@@ -715,6 +715,51 @@ class Quarante_Pourcent_Mixins(
             {"data": serializer.data},
             status=status.HTTP_200_OK
         )
+    
+    # def get(self, request, *args, **kwargs):
+    #     queryset = self.get_queryset()
+
+    #     # 🔹 Total payé par offrande
+    #     paiements_total = Payement_Offrande.objects.filter(
+    #         type_payement="in",
+    #         nom_offrande=OuterRef('nom_offrande'),
+    #     ).values('nom_offrande').annotate(
+    #         total=Sum('montant')
+    #     ).values('total')
+
+    #     # 🔹 Annotation 40 %
+    #     queryset = queryset.annotate(
+    #         total_paye=Coalesce(
+    #             Subquery(
+    #                 paiements_total,
+    #                 output_field=DecimalField(max_digits=15, decimal_places=2)
+    #             ),
+    #             Value(Decimal('0.00'), output_field=DecimalField(max_digits=15, decimal_places=2))
+    #         ),
+    #         quarante_pourcent=ExpressionWrapper(
+    #             F('total_paye') * Value(
+    #                 Decimal('0.40'),
+    #                 output_field=DecimalField(max_digits=5, decimal_places=2)
+    #             ),
+    #             output_field=DecimalField(max_digits=15, decimal_places=2)
+    #         )
+    #     )
+
+    #     # 🔹 Somme de tous les 40 %
+    #     total_quarante = queryset.aggregate(
+    #         somme_quarante=Coalesce(Sum('quarante_pourcent'), Value(Decimal('0.00')))
+    #     )['somme_quarante']
+
+    #     serializer = self.get_serializer(queryset, many=True)
+
+    #     return Response(
+    #         {
+    #             "data": serializer.data,
+    #             "total_quarante": str(total_quarante)  # string pour JSON
+    #         },
+    #         status=status.HTTP_200_OK
+    #     )
+
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
