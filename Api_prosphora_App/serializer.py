@@ -185,55 +185,6 @@ class EtatBesoinSerializer(serializers.ModelSerializer):
         model = EtatBesoin
         fields = '__all__'
 
-
-# class Quarante_PourcentSerializer(serializers.ModelSerializer):
-#     nom_offrande = serializers.CharField(source='nom_offrande.nom_offrande', read_only=True)
-
-#     total_paye = serializers.DecimalField(
-#         max_digits=15,
-#         decimal_places=2,
-#         read_only=True
-#     )
-#     # quarante_pourcent = serializers.DecimalField(
-#     #     max_digits=15,
-#     #     decimal_places=2,
-#     #     read_only=True
-#     # )
-
-
-#     class Meta:
-#         model = Quarante_Pourcent
-#         fields = '__all__'
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         eglise_id = self.context.get('eglise_id')
-#         if eglise_id:
-#             self.fields['user'].queryset = self.fields['user'].queryset.filter(eglise_id=eglise_id)
-#         else:
-#             self.fields['user'].queryset = self.fields['user'].queryset.none()
-
-
-# class Quarante_PourcentSerializer(serializers.ModelSerializer):
-    
-#     nom_offrande = serializers.CharField(source='nom_offrande.nom_offrande', read_only=True)
-
-#     total_paye = serializers.DecimalField(
-#         max_digits=15,
-#         decimal_places=2,
-#         read_only=True
-#     )
-#     quarante_pourcent = serializers.DecimalField(
-#         max_digits=15,
-#         decimal_places=2,
-#         read_only=True
-#     )
-
-#     class Meta:
-#         model = Quarante_Pourcent
-#         fields = "__all__"
-
-from rest_framework import serializers
-
 class Quarante_PourcentSerializer(serializers.ModelSerializer):
     
     offrande = serializers.CharField(
@@ -254,18 +205,24 @@ class Quarante_PourcentSerializer(serializers.ModelSerializer):
     )
 
     derniere_date = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Quarante_Pourcent
         fields = [
             "id",
-            "nom_offrande",       
-            "offrande",    
+            "nom_offrande",
+            "offrande",
             "total_paye",
             "quarante_pourcent",
             "derniere_date",
             "user",
         ]
 
-
     def get_derniere_date(self, obj):
-        return obj.derniere_date_payement
+        derniers_paiement = Payement_Offrande.objects.filter(
+            nom_offrande=obj.nom_offrande  
+        ).order_by('-date_payement').first()
+
+        if derniers_paiement:
+            return derniers_paiement.date_payement
+        return None
