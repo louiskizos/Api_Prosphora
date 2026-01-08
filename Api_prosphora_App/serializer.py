@@ -191,6 +191,7 @@ class Quarante_PourcentSerializer(serializers.ModelSerializer):
         source='nom_offrande.nom_offrande',
         read_only=True
     )
+    
 
     total_paye = serializers.DecimalField(
         max_digits=15,

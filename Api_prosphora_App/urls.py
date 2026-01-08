@@ -71,6 +71,7 @@ urlpatterns = [
     path('quarante_pourcent/<int:eglise_id>/', Quarante_Pourcent_Mixins.as_view(), name='liste-equarante_pourcent'),
     path('delete_quarante_pourcent/<int:eglise_id>/<str:pk>/', Quarante_Pourcent_Mixins.as_view(), name='delete_quarante_pourcent'),
     path('update_quarante_pourcent/<int:eglise_id>/<str:pk>/', Quarante_Pourcent_Mixins.as_view(), name='update_quarante_pourcent'),
+    path('quarante_pourcent_hebdomadaire/<int:eglise_id>/', QuarantePourcentHebdomadaireAPIView.as_view(), name='quarante_pourcent_hebdomadaire'),
 
 
 
@@ -80,6 +81,7 @@ urlpatterns = [
 
 # ============= Livre de caisse =========================
     path('livre_caisse/<int:eglise_id>/', LivreCaisseAPIView.as_view(), name='livre_caisse'),
+    path('livre_caisse_hebdomadaire/<int:eglise_id>/', LivreCaisseHebdomadaireAPIView.as_view(), name='livre_caisse_hebdomadaire'),
 
 # =========== Rapport Prevision =========================
     path('rapport_prevision/', RapportPrevisionAPIView.as_view(), name='rapport_prevision'),
