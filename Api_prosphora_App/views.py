@@ -654,7 +654,6 @@ class Payement_Offrande_Mixins(
     def get(self, request, *args, **kwargs):
         pk = kwargs.get('pk')
 
-        # 🔒 On remplace retrieve() de DRF
         if pk:
             instance = self.get_queryset().first()
             if not instance:
@@ -1052,7 +1051,114 @@ class QuarantePourcentMensuelAPIView(APIView):
         }, status=200)
     
 
+# ======================== 60 % =========================
+
+class PayementSansQuaranteAPIView(APIView):
+
+    def get(self, request, *args, **kwargs):
+        eglise_id = kwargs.get("eglise_id")
+
+        quarante_offrandes = Quarante_Pourcent.objects.values_list(
+            "nom_offrande_id", flat=True
+        )
+
+        queryset = Payement_Offrande.objects.exclude(
+            nom_offrande_id__in=quarante_offrandes
+        )
+
+        if eglise_id:
+            queryset = queryset.filter(
+                nom_offrande__descript_recette__user__eglise_id=eglise_id
+            )
+        else:
+            user = request.user
+            if hasattr(user, "eglise") and user.eglise:
+                queryset = queryset.filter(
+                    nom_offrande__descript_recette__user__eglise=user.eglise
+                )
+            else:
+                queryset = Payement_Offrande.objects.none()
+
+        if not queryset.exists():
+            return Response({"paiements_sans_quarante": []})
+
+        grouped_queryset = (
+            queryset
+            .annotate(mois=TruncMonth("date_payement"))
+            .values(
+                "mois",
+                "nom_offrande",
+                "nom_offrande__nom_offrande",  # le nom de l'offrande lié
+                "type_monaie",
+            )
+            .annotate(total_montant=Sum("montant"))
+            .order_by("mois", "nom_offrande")
+        )
+
+        result = []
+        for item in grouped_queryset:
+            result.append({
+                "mois": item["mois"].strftime("%B %Y"),
+                "nom_offrande_id": item["nom_offrande"],
+                "nom_offrande": item["nom_offrande__nom_offrande"],
+                "type_monaie": item["type_monaie"],
+                "total_montant": float(item["total_montant"] or Decimal("0.00"))
+            })
+
+        return Response({"paiements_sans_quarante": result}, status=200)
     
+# ======================== Depense =========================
+
+class DepensesAPIView(APIView):
+
+    def get(self, request, *args, **kwargs):
+
+        eglise_id = kwargs.get("eglise_id")
+
+        # Filtrer uniquement les dépenses
+        queryset = Payement_Offrande.objects.filter(type_payement="out")
+
+        if eglise_id:
+            queryset = queryset.filter(
+                nom_offrande__descript_recette__user__eglise_id=eglise_id
+            )
+        else:
+            user = request.user
+            if hasattr(user, "eglise") and user.eglise:
+                queryset = queryset.filter(
+                    nom_offrande__descript_recette__user__eglise=user.eglise
+                )
+            else:
+                queryset = Payement_Offrande.objects.none()
+
+        if not queryset.exists():
+            return Response({"depenses": []})
+
+        depenses_queryset = (
+            queryset
+            .annotate(mois=TruncMonth("date_payement"))
+            .values(
+                "mois",
+                "nom_offrande",
+                "nom_offrande__nom_offrande",  # Nom de l’offrande lié
+                "type_monaie",
+            )
+            .annotate(total=Sum("montant"))
+            .order_by("mois", "nom_offrande")
+        )
+
+        result = []
+
+        for item in depenses_queryset:
+            result.append({
+                "mois": item["mois"].strftime("%B %Y"),
+                "nom_offrande_id": item["nom_offrande"],
+                "nom_offrande": item["nom_offrande__nom_offrande"],
+                "type_monaie": item["type_monaie"],
+                "total_depense": float(item["total"] or Decimal("0.00"))
+            })
+
+        return Response({"depenses": result}, status=200)  
     
 # ======================== Rapport Bilan =========================   
 

@@ -67,11 +67,16 @@ urlpatterns = [
     path('delete_etat_besoin/<int:eglise_id>/<str:pk>/', EtatBesoin_Mixins.as_view(), name='delete_etat_besoin'),
     path('update_etat_besoin/<int:eglise_id>/<str:pk>/', EtatBesoin_Mixins.as_view(), name='update_etat_besoin'),
 
+# ============ Groupe Prevision ===============
+    path('depense/<int:eglise_id>/', DepensesAPIView.as_view(), name='liste-depense'),
+
+
 # ============ Quarante Pourcent  ===============
     path('quarante_pourcent/<int:eglise_id>/', Quarante_Pourcent_Mixins.as_view(), name='liste-equarante_pourcent'),
     path('delete_quarante_pourcent/<int:eglise_id>/<str:pk>/', Quarante_Pourcent_Mixins.as_view(), name='delete_quarante_pourcent'),
     path('update_quarante_pourcent/<int:eglise_id>/<str:pk>/', Quarante_Pourcent_Mixins.as_view(), name='update_quarante_pourcent'),
-    path('quarante_pourcent_hebdomadaire/<int:eglise_id>/', QuarantePourcentMensuelAPIView.as_view(), name='quarante_pourcent_hebdomadaire'),
+    path('quarante_pourcent_Quarante_mensuel/<int:eglise_id>/', QuarantePourcentMensuelAPIView.as_view(), name='quarante_pourcent_mensuel'),
+    path('payement_sans_quarante_pourcent/<int:eglise_id>/', PayementSansQuaranteAPIView.as_view(), name='liste-payement_sans_quarante_pourcent'),
 
 # ============ Echange Monaie  ===============
    # path('echange_monaie/<int:eglise_id>/', TauxEchangeMonaie_Mixins.as_view(), name='liste-echange_monaie'),
