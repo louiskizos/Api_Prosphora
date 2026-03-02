@@ -71,9 +71,14 @@ urlpatterns = [
     path('quarante_pourcent/<int:eglise_id>/', Quarante_Pourcent_Mixins.as_view(), name='liste-equarante_pourcent'),
     path('delete_quarante_pourcent/<int:eglise_id>/<str:pk>/', Quarante_Pourcent_Mixins.as_view(), name='delete_quarante_pourcent'),
     path('update_quarante_pourcent/<int:eglise_id>/<str:pk>/', Quarante_Pourcent_Mixins.as_view(), name='update_quarante_pourcent'),
-    path('quarante_pourcent_hebdomadaire/<int:eglise_id>/', QuarantePourcentHebdomadaireAPIView.as_view(), name='quarante_pourcent_hebdomadaire'),
+    path('quarante_pourcent_hebdomadaire/<int:eglise_id>/', QuarantePourcentMensuelAPIView.as_view(), name='quarante_pourcent_hebdomadaire'),
 
+# ============ Echange Monaie  ===============
+   # path('echange_monaie/<int:eglise_id>/', TauxEchangeMonaie_Mixins.as_view(), name='liste-echange_monaie'),
+   # path('delete_echange_monaie/<int:eglise_id>/<str:pk>/', EchangeMonaie_Mixins.as_view(), name='delete_echange_monaie'),
+   # path('update_echange_monaie/<int:eglise_id>/<str:pk>/', EchangeMonaie_Mixins.as_view(), name='update_echange_monaie'),
 
+git push -u origin main
 
 # ============= Bilan ====================
 

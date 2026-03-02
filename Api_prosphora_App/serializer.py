@@ -205,6 +205,25 @@ class Quarante_PourcentSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+
+    soixante_pourcent = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        read_only=True
+    )
+
+    prime = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        read_only=True
+    )
+
+    paroisse = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        read_only=True
+    )
+
     derniere_date = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -215,6 +234,9 @@ class Quarante_PourcentSerializer(serializers.ModelSerializer):
             "offrande",
             "total_paye",
             "quarante_pourcent",
+            "soixante_pourcent",
+            "prime",
+            "paroisse",
             "derniere_date",
             "user",
         ]
@@ -227,3 +249,15 @@ class Quarante_PourcentSerializer(serializers.ModelSerializer):
         if derniers_paiement:
             return derniers_paiement.date_payement
         return None
+    
+class Echange_MonaieSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EchangeMonaie
+        fields = '__all__'
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        eglise_id = self.context.get('eglise_id')
+        if eglise_id:
+            self.fields['user'].queryset = self.fields['user'].queryset.filter(eglise_id=eglise_id)
+        else:
+            self.fields['user'].queryset = self.fields['user'].queryset.none()

@@ -8,10 +8,9 @@ from django.contrib.auth import logout
 from django.contrib.auth import authenticate, login
 from rest_framework.response import Response
 from rest_framework import status
-from django.db.models import Sum, Q, OuterRef, Subquery, Sum, DecimalField, BigIntegerField, F, ExpressionWrapper, Value
+from django.db.models import Sum, Q, OuterRef, Subquery, Sum, DecimalField, BigIntegerField, F, ExpressionWrapper, Value, DateTimeField, Max
 from decimal import Decimal
 from django.db.models.functions import Coalesce, ExtractYear, Cast
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -21,14 +20,6 @@ from django.core import management
 import tempfile
 from collections import defaultdict
 from datetime import date, timedelta
-
-from django.db.models import Sum, Max, F, Value, Subquery, OuterRef, ExpressionWrapper, DecimalField, DateTimeField
-from django.db.models.functions import Coalesce
-
-
-
-
-
 
 
 def backup_json_view(request, eglise_id):
@@ -651,7 +642,6 @@ class EtatBesoin_Mixins(
         return self.destroy(request, *args, **kwargs)
     
 # ======================== 40 % =========================
-from django.db.models import Max, DateTimeField
 
 
 class Quarante_Pourcent_Mixins(
@@ -709,6 +699,31 @@ class Quarante_Pourcent_Mixins(
                 output_field=DecimalField(max_digits=15, decimal_places=2)
             ),
 
+
+            soixante_pourcent=ExpressionWrapper(
+                F('total_paye') * Value(
+                    Decimal('0.60'),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)
+                ),
+                output_field=DecimalField(max_digits=15, decimal_places=2)
+            ),
+
+            prime = ExpressionWrapper(
+                F('soixante_pourcent') / Value(
+                    Decimal('2'),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)
+                ),
+                output_field=DecimalField(max_digits=15, decimal_places=2)
+            ),
+
+            paroisse = ExpressionWrapper(
+                F('soixante_pourcent') / Value(
+                    Decimal('2'),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)
+                ),
+                output_field=DecimalField(max_digits=15, decimal_places=2)
+            ),
+
             derniere_date_payement=Subquery(
                 derniere_date,
                 output_field=DateTimeField()
@@ -742,17 +757,119 @@ class Quarante_Pourcent_Mixins(
 
 
 
-class QuarantePourcentHebdomadaireAPIView(APIView):
-    # permission_classes = [IsAuthenticated]  # Décommenter si nécessaire
+# class QuarantePourcentHebdomadaireAPIView(APIView):
+#     # permission_classes = [IsAuthenticated]  # Décommenter si nécessaire
 
-    def get_week_range(self, some_date):
-        """Renvoie la plage de la semaine pour une date donnée (lundi-dimanche)"""
-        start_of_week = some_date - timedelta(days=some_date.weekday())
-        end_of_week = start_of_week + timedelta(days=6)
-        return f"{start_of_week.strftime('%d/%m/%Y')} – {end_of_week.strftime('%d/%m/%Y')}"
+#     def get_week_range(self, some_date):
+#         """Renvoie la plage de la semaine pour une date donnée (lundi-dimanche)"""
+#         start_of_week = some_date - timedelta(days=some_date.weekday())
+#         end_of_week = start_of_week + timedelta(days=6)
+#         return f"{start_of_week.strftime('%d/%m/%Y')} – {end_of_week.strftime('%d/%m/%Y')}"
+
+#     def get_queryset(self, eglise_id=None):
+#         """Retourne les paiements filtrés pour l'année en cours et dans Quarante_Pourcent"""
+#         today = date.today()
+#         current_year = today.year
+
+#         if eglise_id:
+#             queryset = Payement_Offrande.objects.filter(
+#                 nom_offrande__descript_recette__user__eglise_id=eglise_id,
+#                 date_payement__year=current_year
+#             )
+#         else:
+#             user = self.request.user
+#             if hasattr(user, "eglise") and user.eglise:
+#                 queryset = Payement_Offrande.objects.filter(
+#                     nom_offrande__descript_recette__user__eglise=user.eglise,
+#                     date_payement__year=current_year
+#                 )
+#             else:
+#                 queryset = Payement_Offrande.objects.none()
+
+#         # Filtrer uniquement les paiements liés à Quarante_Pourcent
+#         quarante_offrandes = Quarante_Pourcent.objects.values_list('nom_offrande', flat=True)
+#         queryset = queryset.filter(nom_offrande__in=quarante_offrandes)
+
+#         return queryset
+
+#     def get(self, request, *args, **kwargs):
+#         eglise_id = kwargs.get('eglise_id')
+#         queryset = self.get_queryset(eglise_id)
+
+#         if not queryset.exists():
+#             return Response({"error": "Aucune donnée 40% pour cette église."}, status=400)
+
+#         # --- Logique Subquery pour total_paye, quarante_pourcent et derniere_date ---
+#         paiements_total = Payement_Offrande.objects.filter(
+#             type_payement="in",
+#             nom_offrande=OuterRef('nom_offrande'),
+#         ).values('nom_offrande').annotate(
+#             total=Sum('montant')
+#         ).values('total')
+
+#         derniere_date = Payement_Offrande.objects.filter(
+#             type_payement="in",
+#             nom_offrande=OuterRef('nom_offrande')
+#         ).values('nom_offrande').annotate(
+#             derniere=Max('date_payement')
+#         ).values('derniere')
+
+#         queryset = queryset.annotate(
+#             total_paye=Coalesce(
+#                 Subquery(paiements_total, output_field=DecimalField(max_digits=15, decimal_places=2)),
+#                 Value(Decimal('0.00'), output_field=DecimalField(max_digits=15, decimal_places=2))
+#             ),
+#             quarante_pourcent=ExpressionWrapper(
+#                 F('total_paye') * Value(Decimal('0.40'), output_field=DecimalField(max_digits=5, decimal_places=2)),
+#                 output_field=DecimalField(max_digits=15, decimal_places=2)
+#             ),
+#             derniere_date_payement=Subquery(derniere_date, output_field=DateTimeField())
+#         )
+
+#         # --- Calcul hebdomadaire ---
+#         semaines = defaultdict(lambda: defaultdict(Decimal))
+#         quarante_pourcent_hebdo = defaultdict(lambda: defaultdict(Decimal))
+
+#         for item in queryset:
+#             week_label = self.get_week_range(item.date_payement)
+#             monnaie = item.type_monaie
+#             montant = item.montant or Decimal('0.00')
+
+#             if item.type_payement == "in":
+#                 semaines[week_label][monnaie] += montant
+#                 quarante_pourcent_hebdo[week_label][monnaie] += montant * Decimal('0.40')
+
+
+#         # Préparer le résultat du livre de caisse
+#         livre_result = [
+#             {"semaine": week, "totaux_par_monnaie": {m: float(total) for m, total in monnaies.items()}}
+#             for week, monnaies in sorted(semaines.items())
+#         ]
+
+#         # Préparer le résultat du 40% hebdo
+#         quarante_result = [
+#             {"semaine": week, "quarante_pourcent_par_monnaie": {m: float(total) for m, total in monnaies.items()}}
+#             for week, monnaies in sorted(quarante_pourcent_hebdo.items())
+#         ]
+
+#         # Sérialiser le queryset annoté
+#         serializer = PayementOffrandeSerializer(queryset, many=True)
+
+#         return Response({
+#             "livre_caisse_hebdomadaire": livre_result,
+#             "quarante_pourcent_hebdomadaire": quarante_result,
+#             "details_offrandes": serializer.data
+#         }, status=200)
+
+
+
+class QuarantePourcentMensuelAPIView(APIView):
+
+    def get_month_label(self, some_date):
+        """Retourne le label du mois (ex: Janvier 2026)"""
+        return some_date.strftime('%B %Y')
 
     def get_queryset(self, eglise_id=None):
-        """Retourne les paiements filtrés pour l'année en cours et dans Quarante_Pourcent"""
         today = date.today()
         current_year = today.year
 
@@ -771,7 +888,6 @@ class QuarantePourcentHebdomadaireAPIView(APIView):
             else:
                 queryset = Payement_Offrande.objects.none()
 
-        # Filtrer uniquement les paiements liés à Quarante_Pourcent
         quarante_offrandes = Quarante_Pourcent.objects.values_list('nom_offrande', flat=True)
         queryset = queryset.filter(nom_offrande__in=quarante_offrandes)
 
@@ -784,7 +900,7 @@ class QuarantePourcentHebdomadaireAPIView(APIView):
         if not queryset.exists():
             return Response({"error": "Aucune donnée 40% pour cette église."}, status=400)
 
-        # --- Logique Subquery pour total_paye, quarante_pourcent et derniere_date ---
+        # ---- Subqueries ----
         paiements_total = Payement_Offrande.objects.filter(
             type_payement="in",
             nom_offrande=OuterRef('nom_offrande'),
@@ -805,52 +921,59 @@ class QuarantePourcentHebdomadaireAPIView(APIView):
                 Value(Decimal('0.00'), output_field=DecimalField(max_digits=15, decimal_places=2))
             ),
             quarante_pourcent=ExpressionWrapper(
-                F('total_paye') * Value(Decimal('0.40'), output_field=DecimalField(max_digits=5, decimal_places=2)),
+                F('total_paye') * Value(Decimal('0.40')),
                 output_field=DecimalField(max_digits=15, decimal_places=2)
             ),
             derniere_date_payement=Subquery(derniere_date, output_field=DateTimeField())
         )
-        # --- Fin logique Subquery ---
 
-        # --- Calcul hebdomadaire ---
-        semaines = defaultdict(lambda: defaultdict(Decimal))
-        quarante_pourcent_hebdo = defaultdict(lambda: defaultdict(Decimal))
+        # ---- Calcul mensuel ----
+        mois_data = defaultdict(lambda: defaultdict(Decimal))
+        quarante_mensuel = defaultdict(lambda: defaultdict(Decimal))
 
         for item in queryset:
-            week_label = self.get_week_range(item.date_payement)
+            month_label = self.get_month_label(item.date_payement)
             monnaie = item.type_monaie
             montant = item.montant or Decimal('0.00')
 
-            # Total net pour le livre de caisse (in positif, out négatif)
-            montant_net = montant if item.type_payement != 'out' else -montant
-            semaines[week_label][monnaie] += montant_net
-
-            # 40% uniquement pour les paiements "in"
             if item.type_payement == "in":
-                quarante_pourcent_hebdo[week_label][monnaie] += montant * Decimal('0.40')
+                mois_data[month_label][monnaie] += montant
+                quarante_mensuel[month_label][monnaie] += montant * Decimal('0.40')
 
-        # Préparer le résultat du livre de caisse
-        livre_result = [
-            {"semaine": week, "totaux_par_monnaie": {m: float(total) for m, total in monnaies.items()}}
-            for week, monnaies in sorted(semaines.items())
-        ]
 
-        # Préparer le résultat du 40% hebdo
-        quarante_result = [
-            {"semaine": week, "quarante_pourcent_par_monnaie": {m: float(total) for m, total in monnaies.items()}}
-            for week, monnaies in sorted(quarante_pourcent_hebdo.items())
-        ]
+        # 60% et 40% mensuel
+        quarante_result = []
 
-        # Sérialiser le queryset annoté
+        for month, monnaies in sorted(mois_data.items()):
+            details = {}
+
+            for m, total in monnaies.items():
+                if m not in ["cdf", "usd"]:
+                    continue
+
+                quarante = total * Decimal('0.40')
+                soixante = total * Decimal('0.60')
+                prime = soixante / Decimal('2')
+                paroisse = soixante / Decimal('2')
+
+                details[m] = {
+                    "total": float(total),
+                    "quarante_pourcent": float(quarante),
+                    "soixante_pourcent": float(soixante),
+                    "prime": float(prime),
+                    "paroisse": float(paroisse),
+                }
+
+            quarante_result.append({
+                "mois": month,
+                "details_par_monnaie": details
+            })
         serializer = PayementOffrandeSerializer(queryset, many=True)
 
         return Response({
-            "livre_caisse_hebdomadaire": livre_result,
-            "quarante_pourcent_hebdomadaire": quarante_result,
-            "details_offrandes": serializer.data
+            "quarante_pourcent_mensuel": quarante_result,
+           
         }, status=200)
-
-
 
     
 # ======================== Rapport Bilan =========================   
