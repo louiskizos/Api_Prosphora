@@ -172,28 +172,41 @@ class QuarantePourcentMensuelAPIView(APIView):
             "quarante_pourcent_mensuel": quarante_result,
             "details_offrandes": details_offrandes
         }, status=200)
+import io
+from django.http import HttpResponse
+from django.utils import timezone
+from django.core import management
+from .models import Church
+
 
 def backup_json_view(request, eglise_id):
 
     try:
         eglise = Church.objects.get(pk=eglise_id)
     except Church.DoesNotExist:
-        return FileResponse(status=404)
+        return HttpResponse(status=404)
 
     nom_eglise = eglise.nom.replace(" ", "_")
     date_str = timezone.now().strftime("%Y-%m-%d")
     filename = f"{nom_eglise}_{date_str}_backup.json"
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
-        management.call_command('dumpdata', '--indent=2', f'--output={tmp.name}')
-        tmp.flush()
-        response = FileResponse(
-            open(tmp.name, 'rb'),
-            as_attachment=True,
-            filename=filename
-        )
+    buffer = io.StringIO()
 
-    os.unlink(tmp.name)
+    management.call_command(
+        "dumpdata",
+        indent=2,
+        stdout=buffer
+    )
+
+    buffer.seek(0)
+
+    response = HttpResponse(
+        buffer,
+        content_type="application/json"
+    )
+
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
     return response
 
 
@@ -1141,6 +1154,7 @@ class DepensesAPIView(APIView):
                 "mois",
                 "nom_offrande",
                 "nom_offrande__nom_offrande",  # Nom de l’offrande lié
+                "motif",
                 "type_monaie",
             )
             .annotate(total=Sum("montant"))
@@ -1154,6 +1168,7 @@ class DepensesAPIView(APIView):
                 "mois": item["mois"].strftime("%B %Y"),
                 "nom_offrande_id": item["nom_offrande"],
                 "nom_offrande": item["nom_offrande__nom_offrande"],
+                "motif" : item["motif"],
                 "type_monaie": item["type_monaie"],
                 "total_depense": float(item["total"] or Decimal("0.00"))
             })
