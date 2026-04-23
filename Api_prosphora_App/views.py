@@ -172,10 +172,76 @@ class QuarantePourcentMensuelAPIView(APIView):
             "quarante_pourcent_mensuel": quarante_result,
             "details_offrandes": details_offrandes
         }, status=200)
-import io
+    
+# import json
+# from django.http import HttpResponse
+# from django.utils import timezone
+# from django.apps import apps
+# from django.core.serializers import serialize
+# from django.db.models import ForeignKey
+# from .models import Church
+
+
+# def backup_json_view(request, eglise_id):
+
+#     try:
+#         eglise = Church.objects.get(pk=eglise_id)
+#     except Church.DoesNotExist:
+#         return HttpResponse(status=404)
+
+#     nom_eglise = eglise.nom.replace(" ", "_")
+#     date_str = timezone.now().strftime("%Y-%m-%d")
+#     filename = f"{nom_eglise}_{date_str}_backup.json"
+
+#     data = {}
+
+#     # 🔥 parcourir tous les modèles
+#     for model in apps.get_models():
+
+#         model_name = model.__name__
+
+#         try:
+#             queryset = None
+
+#             # 🔍 cas 1: modèle avec champ eglise direct
+#             if hasattr(model, "eglise"):
+#                 queryset = model.objects.filter(eglise_id=eglise_id)
+
+#             else:
+#                 # 🔍 cas 2: chercher relation vers user → eglise
+#                 for field in model._meta.get_fields():
+
+#                     if isinstance(field, ForeignKey):
+
+#                         if field.name == "user":
+#                             queryset = model.objects.filter(user__eglise_id=eglise_id)
+
+#                         if field.name == "nom_offrande":
+#                             queryset = model.objects.filter(
+#                                 nom_offrande__descript_recette__user__eglise_id=eglise_id
+#                             )
+
+#             if queryset and queryset.exists():
+#                 data[model_name] = json.loads(serialize("json", queryset))
+
+#         except Exception as e:
+#             # éviter crash si un modèle pose problème
+#             continue
+
+#     response = HttpResponse(
+#         json.dumps(data, indent=2),
+#         content_type="application/json"
+#     )
+
+#     response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+#     return response
+
+import json
 from django.http import HttpResponse
 from django.utils import timezone
-from django.core import management
+from django.apps import apps
+from django.core.serializers import serialize
 from .models import Church
 
 
@@ -190,18 +256,34 @@ def backup_json_view(request, eglise_id):
     date_str = timezone.now().strftime("%Y-%m-%d")
     filename = f"{nom_eglise}_{date_str}_backup.json"
 
-    buffer = io.StringIO()
+    all_data = []
 
-    management.call_command(
-        "dumpdata",
-        indent=2,
-        stdout=buffer
-    )
+    for model in apps.get_models():
+        try:
+            queryset = None
 
-    buffer.seek(0)
+            if hasattr(model, "eglise"):
+                queryset = model.objects.filter(eglise_id=eglise_id)
+
+            else:
+                for field in model._meta.get_fields():
+                    if field.name == "user":
+                        queryset = model.objects.filter(user__eglise_id=eglise_id)
+
+                    if field.name == "nom_offrande":
+                        queryset = model.objects.filter(
+                            nom_offrande__descript_recette__user__eglise_id=eglise_id
+                        )
+
+            if queryset and queryset.exists():
+                data = json.loads(serialize("json", queryset))
+                all_data.extend(data)
+
+        except Exception:
+            continue
 
     response = HttpResponse(
-        buffer,
+        json.dumps(all_data, indent=2),
         content_type="application/json"
     )
 
@@ -209,6 +291,61 @@ def backup_json_view(request, eglise_id):
 
     return response
 
+
+
+
+    import json
+from django.http import HttpResponse
+from django.apps import apps
+from django.db import transaction
+
+
+def restore_json_view(request):
+
+    if request.method != "POST":
+        return HttpResponse(status=405)
+
+    try:
+        file = request.FILES["file"]
+        data = json.load(file)
+    except Exception:
+        return HttpResponse("Fichier invalide", status=400)
+
+    try:
+        with transaction.atomic():
+
+            # 🔥 Trier les modèles pour éviter erreurs FK
+            model_priority = [
+                "Church",
+                "User",
+                "Sorte_Offrande",
+                "Payement_Offrande",
+                "Quarante_Pourcent",
+            ]
+
+            data_sorted = sorted(
+                data,
+                key=lambda x: model_priority.index(x["model"].split(".")[-1])
+                if x["model"].split(".")[-1] in model_priority else 999
+            )
+
+            for item in data_sorted:
+                model_label = item["model"]
+                pk = item["pk"]
+                fields = item["fields"]
+
+                app_label, model_name = model_label.split(".")
+                model = apps.get_model(app_label, model_name)
+
+                obj, created = model.objects.update_or_create(
+                    pk=pk,
+                    defaults=fields
+                )
+
+        return HttpResponse("Restauration réussie ✅")
+
+    except Exception as e:
+        return HttpResponse(f"Erreur: {str(e)}", status=500)
 
 
 
