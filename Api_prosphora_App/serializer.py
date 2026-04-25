@@ -4,38 +4,63 @@ from .models import *
 
 
 
-class PayementOffrandeSerializer(serializers.ModelSerializer):
+# class PayementOffrandeSerializer(serializers.ModelSerializer):
 
+#     num_compte = serializers.CharField(source='nom_offrande.num_compte', read_only=True)
+#     nom_offrande_nom = serializers.CharField(source='nom_offrande.nom_offrande', read_only=True)
+
+#     class Meta:
+#         model = Payement_Offrande
+#         fields = '__all__'
+
+#     def __init__(self, *args, **kwargs):
+#         eglise_id = kwargs.pop('eglise_id', None)
+#         super().__init__(*args, **kwargs)
+
+#         request = self.context.get('request', None)
+#         user = getattr(request, "user", None)
+
+#         if 'nom_offrande' in self.fields:
+#             if eglise_id:
+#                 self.fields['nom_offrande'].queryset = (
+#                     self.fields['nom_offrande'].queryset.filter(
+#                         descript_recette__user__eglise_id=eglise_id
+#                     )
+#                 )
+#             elif user and hasattr(user, "eglise") and user.eglise:
+#                 self.fields['nom_offrande'].queryset = (
+#                     self.fields['nom_offrande'].queryset.filter(
+#                         descript_recette__user__eglise=user.eglise
+#                     )
+#                 )
+class PayementOffrandeSerializer(serializers.ModelSerializer):
     num_compte = serializers.CharField(source='nom_offrande.num_compte', read_only=True)
     nom_offrande_nom = serializers.CharField(source='nom_offrande.nom_offrande', read_only=True)
 
+    # Cette classe Meta doit être ICI
     class Meta:
         model = Payement_Offrande
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
-        eglise_id = kwargs.pop('eglise_id', None)
         super().__init__(*args, **kwargs)
-
+        
+        # Récupération sécurisée du contexte
+        eglise_id = self.context.get('eglise_id')
         request = self.context.get('request', None)
         user = getattr(request, "user", None)
 
         if 'nom_offrande' in self.fields:
+            # On restreint les choix du menu déroulant pour la performance
+            qs = self.fields['nom_offrande'].queryset
             if eglise_id:
-                self.fields['nom_offrande'].queryset = (
-                    self.fields['nom_offrande'].queryset.filter(
-                        descript_recette__user__eglise_id=eglise_id
-                    )
-                )
+                self.fields['nom_offrande'].queryset = qs.filter(
+                    descript_recette__user__eglise_id=eglise_id
+                ).distinct()
             elif user and hasattr(user, "eglise") and user.eglise:
-                self.fields['nom_offrande'].queryset = (
-                    self.fields['nom_offrande'].queryset.filter(
-                        descript_recette__user__eglise=user.eglise
-                    )
-                )
-
-
-
+                self.fields['nom_offrande'].queryset = qs.filter(
+                    descript_recette__user__eglise=user.eglise
+                ).distinct()
 
 class ChurchSerializer(serializers.ModelSerializer):
     class Meta:

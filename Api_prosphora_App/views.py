@@ -765,6 +765,91 @@ class Prevoir_Mixins(
 
 # ======================== PAYEMENT =========================
 
+# class Payement_Offrande_Mixins(
+#     generics.GenericAPIView,
+#     mixins.CreateModelMixin,
+#     mixins.UpdateModelMixin,
+#     mixins.DestroyModelMixin,
+#     mixins.ListModelMixin
+# ):
+#     queryset = Payement_Offrande.objects.all()
+#     #queryset = Payement_Offrande.objects.all().order_by('-date_payement')
+
+#     serializer_class = PayementOffrandeSerializer
+#     lookup_field = 'pk'
+
+
+
+
+
+#     def get_serializer_context(self):
+#         context = super().get_serializer_context()
+#         context['eglise_id'] = self.kwargs.get('eglise_id')
+#         return context
+
+#     def get_queryset(self):
+#         # Optimisation avec select_related pour éviter le N+1
+#         return Payement_Offrande.objects.select_related(
+#             'nom_offrande'
+#         ).filter(
+#             nom_offrande__descript_recette__user__eglise_id=self.kwargs.get('eglise_id')
+#         )
+#     def get_queryset(self):
+#         user = self.request.user
+#         pk = self.kwargs.get('pk')
+#         eglise_id = self.kwargs.get('eglise_id')
+
+#         queryset = Payement_Offrande.objects.all()
+
+#         if eglise_id:
+#             queryset = queryset.filter(
+#                 nom_offrande__descript_recette__user__eglise_id=eglise_id
+#             )
+#         elif getattr(user, "is_authenticated", False) and hasattr(user, "eglise") and user.eglise:
+#             queryset = queryset.filter(
+#                 nom_offrande__descript_recette__user__eglise=user.eglise
+#             )
+#         else:
+#             queryset = Payement_Offrande.objects.none()
+
+#         if pk:
+#             queryset = queryset.filter(pk=pk)
+
+#         return queryset
+
+#     def get(self, request, *args, **kwargs):
+#         pk = kwargs.get('pk')
+
+#         if pk:
+#             instance = self.get_queryset().first()
+#             if not instance:
+#                 return Response({"detail": "Not found"}, status=404)
+
+#             serializer = self.get_serializer(instance)
+#             return Response(serializer.data)
+
+#         queryset = self.get_queryset()
+#         serializer = self.get_serializer(queryset, many=True)
+#         return Response(serializer.data)
+
+#     def post(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         serializer.save()
+#         return Response({"message": "Payement créé."})
+
+#     def patch(self, request, *args, **kwargs):
+#         instance = self.get_object()
+#         serializer = self.get_serializer(instance, data=request.data, partial=True)
+#         serializer.is_valid(raise_exception=True)
+#         serializer.save()
+#         return Response(serializer.data)
+
+#     def delete(self, request, *args, **kwargs):
+#         instance = self.get_object()
+#         instance.delete()
+#         return Response(status=204)
+
 class Payement_Offrande_Mixins(
     generics.GenericAPIView,
     mixins.CreateModelMixin,
@@ -772,18 +857,23 @@ class Payement_Offrande_Mixins(
     mixins.DestroyModelMixin,
     mixins.ListModelMixin
 ):
-    queryset = Payement_Offrande.objects.all()
-    #queryset = Payement_Offrande.objects.all().order_by('-date_payement')
-
     serializer_class = PayementOffrandeSerializer
     lookup_field = 'pk'
+    # Important : Ajoutez une classe de pagination ici si elle n'est pas globale
+    # pagination_class = YourPaginationClass 
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['eglise_id'] = self.kwargs.get('eglise_id')
+        return context
 
     def get_queryset(self):
         user = self.request.user
         pk = self.kwargs.get('pk')
         eglise_id = self.kwargs.get('eglise_id')
 
-        queryset = Payement_Offrande.objects.all()
+        # select_related('nom_offrande') est CRUCIAL ici pour la performance
+        queryset = Payement_Offrande.objects.select_related('nom_offrande').all()
 
         if eglise_id:
             queryset = queryset.filter(
@@ -799,41 +889,25 @@ class Payement_Offrande_Mixins(
         if pk:
             queryset = queryset.filter(pk=pk)
 
-        return queryset
+        return queryset.order_by('-date_payement')
 
     def get(self, request, *args, **kwargs):
-        pk = kwargs.get('pk')
-
-        if pk:
-            instance = self.get_queryset().first()
-            if not instance:
-                return Response({"detail": "Not found"}, status=404)
-
-            serializer = self.get_serializer(instance)
-            return Response(serializer.data)
-
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+        if 'pk' in kwargs:
+            return self.retrieve(request, *args, **kwargs)
+        
+        # Utiliser list() de ListModelMixin gère automatiquement la pagination
+        # Ce qui évitera le plantage sur l'ID 2
+        return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({"message": "Payement créé."})
+        # On utilise create() du mixin pour plus de propreté
+        return self.create(request, *args, **kwargs)
 
     def patch(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+        return self.partial_update(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.delete()
-        return Response(status=204)
-
+        return self.destroy(request, *args, **kwargs)
 
 # ======================== AHADI =========================
 
