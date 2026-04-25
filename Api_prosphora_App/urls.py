@@ -78,6 +78,7 @@ urlpatterns = [
     path('quarante_pourcent_Quarante_mensuel/<int:eglise_id>/', QuarantePourcentMensuelAPIView.as_view(), name='quarante_pourcent_mensuel'),
     path('payement_sans_quarante_pourcent/<int:eglise_id>/', PayementSansQuaranteAPIView.as_view(), name='liste-payement_sans_quarante_pourcent'),
 
+    path('quarante_pourcent_hebdomadaire/<int:eglise_id>/', Quarante_Pourcent_Mixins.as_view(), name='liste-equarante_pourcent'),
 # ============ Echange Monaie  ===============
    # path('echange_monaie/<int:eglise_id>/', TauxEchangeMonaie_Mixins.as_view(), name='liste-echange_monaie'),
    # path('delete_echange_monaie/<int:eglise_id>/<str:pk>/', EchangeMonaie_Mixins.as_view(), name='delete_echange_monaie'),
