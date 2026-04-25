@@ -859,8 +859,8 @@ class Payement_Offrande_Mixins(
 ):
     serializer_class = PayementOffrandeSerializer
     lookup_field = 'pk'
-    # Important : Ajoutez une classe de pagination ici si elle n'est pas globale
-    # pagination_class = YourPaginationClass 
+    
+    pagination_class = None  
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -872,7 +872,7 @@ class Payement_Offrande_Mixins(
         pk = self.kwargs.get('pk')
         eglise_id = self.kwargs.get('eglise_id')
 
-        # select_related('nom_offrande') est CRUCIAL ici pour la performance
+        
         queryset = Payement_Offrande.objects.select_related('nom_offrande').all()
 
         if eglise_id:
@@ -895,12 +895,10 @@ class Payement_Offrande_Mixins(
         if 'pk' in kwargs:
             return self.retrieve(request, *args, **kwargs)
         
-        # Utiliser list() de ListModelMixin gère automatiquement la pagination
-        # Ce qui évitera le plantage sur l'ID 2
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        # On utilise create() du mixin pour plus de propreté
+        
         return self.create(request, *args, **kwargs)
 
     def patch(self, request, *args, **kwargs):
