@@ -97,7 +97,10 @@ urlpatterns = [
     path('rapport_prevision/', RapportPrevisionAPIView.as_view(), name='rapport_prevision'),
 
 # =========== Backup Database =========================
-   # path('backup_database/<int:eglise_id>/', backup_view, name='backup_database'),
-    path('backup_eglise/<int:eglise_id>/', backup_json_view, name='backup_database_eglise'),
+#    # path('backup_database/<int:eglise_id>/', backup_view, name='backup_database'),
+#     path('backup_eglise/<int:eglise_id>/', backup_json_view, name='backup_database_eglise'),
+#     path('export_db_rend/', export_db_render_postgres, name='export_db_render'),
+#     path('test-db/', test_db_connection, name='test_db'),
+#     path('export_backup_json/', export_backup_json, name='export_backup_json')
 
 ]

@@ -1,6 +1,3 @@
-"""
-Django settings for Api_prosphora_Core project.
-"""
 
 from pathlib import Path
 import os
@@ -14,7 +11,8 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback-insecure-key-for-dev-only")
 
-DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+DEBUG = os.getenv("DEBUG", "False").lower() == "True"
+
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
@@ -66,7 +64,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10000
+    'PAGE_SIZE': 200
 }
 
 
