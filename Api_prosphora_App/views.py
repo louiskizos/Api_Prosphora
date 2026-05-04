@@ -26,7 +26,7 @@ from datetime import date
 from django.db.models.functions import Coalesce, TruncMonth
 from django.db.models import Sum, Max, F, Value, DecimalField, ExpressionWrapper, OuterRef, Subquery
 from django.db.models.fields import DateTimeField
-
+from .pagination import *
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -342,19 +342,6 @@ class Abonnement_Mixins(
             queryset = queryset.filter(pk=pk)
 
         return queryset
-    # def get_queryset(self):
-
-    #     user = self.request.user
-    #     eglise_id = self.kwargs.get('eglise_id', None)
-
-    #     if eglise_id:
-    #         return Abonnement.objects.filter(user__eglise_id=eglise_id)
-
-    #     if hasattr(user, "eglise") and user.eglise:
-    #         return Abonnement.objects.filter(user__eglise=user.eglise)
-
-    #     return Abonnement.objects.none()
-
 
 
 
@@ -590,91 +577,6 @@ class Prevoir_Mixins(
 
 # ======================== PAYEMENT =========================
 
-# class Payement_Offrande_Mixins(
-#     generics.GenericAPIView,
-#     mixins.CreateModelMixin,
-#     mixins.UpdateModelMixin,
-#     mixins.DestroyModelMixin,
-#     mixins.ListModelMixin
-# ):
-#     queryset = Payement_Offrande.objects.all()
-#     #queryset = Payement_Offrande.objects.all().order_by('-date_payement')
-
-#     serializer_class = PayementOffrandeSerializer
-#     lookup_field = 'pk'
-
-
-
-
-
-#     def get_serializer_context(self):
-#         context = super().get_serializer_context()
-#         context['eglise_id'] = self.kwargs.get('eglise_id')
-#         return context
-
-#     def get_queryset(self):
-#         # Optimisation avec select_related pour éviter le N+1
-#         return Payement_Offrande.objects.select_related(
-#             'nom_offrande'
-#         ).filter(
-#             nom_offrande__descript_recette__user__eglise_id=self.kwargs.get('eglise_id')
-#         )
-#     def get_queryset(self):
-#         user = self.request.user
-#         pk = self.kwargs.get('pk')
-#         eglise_id = self.kwargs.get('eglise_id')
-
-#         queryset = Payement_Offrande.objects.all()
-
-#         if eglise_id:
-#             queryset = queryset.filter(
-#                 nom_offrande__descript_recette__user__eglise_id=eglise_id
-#             )
-#         elif getattr(user, "is_authenticated", False) and hasattr(user, "eglise") and user.eglise:
-#             queryset = queryset.filter(
-#                 nom_offrande__descript_recette__user__eglise=user.eglise
-#             )
-#         else:
-#             queryset = Payement_Offrande.objects.none()
-
-#         if pk:
-#             queryset = queryset.filter(pk=pk)
-
-#         return queryset
-
-#     def get(self, request, *args, **kwargs):
-#         pk = kwargs.get('pk')
-
-#         if pk:
-#             instance = self.get_queryset().first()
-#             if not instance:
-#                 return Response({"detail": "Not found"}, status=404)
-
-#             serializer = self.get_serializer(instance)
-#             return Response(serializer.data)
-
-#         queryset = self.get_queryset()
-#         serializer = self.get_serializer(queryset, many=True)
-#         return Response(serializer.data)
-
-#     def post(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         serializer.save()
-#         return Response({"message": "Payement créé."})
-
-#     def patch(self, request, *args, **kwargs):
-#         instance = self.get_object()
-#         serializer = self.get_serializer(instance, data=request.data, partial=True)
-#         serializer.is_valid(raise_exception=True)
-#         serializer.save()
-#         return Response(serializer.data)
-
-#     def delete(self, request, *args, **kwargs):
-#         instance = self.get_object()
-#         instance.delete()
-#         return Response(status=204)
-
 class Payement_Offrande_Mixins(
     generics.GenericAPIView,
     mixins.CreateModelMixin,
@@ -686,7 +588,9 @@ class Payement_Offrande_Mixins(
     lookup_field = 'pk'
     
    # pagination_class = None  # Désactive la pagination pour cette vue
-
+    
+    pagination_class = Pagination_payement_offrande
+    
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['eglise_id'] = self.kwargs.get('eglise_id')
@@ -745,40 +649,75 @@ class Ahadi_Mixins(
     serializer_class = AhadiSerializer
     lookup_field = 'pk'
 
+    pagination_class = Pagination_ahadi
+    
     def get_queryset(self):
         eglise_id = self.kwargs.get('eglise_id')
         if not eglise_id:
             return Ahadi.objects.none()
         return Ahadi.objects.filter(nom_offrande__descript_recette__user__eglise_id=eglise_id)
 
+    # def get(self, request, *args, **kwargs):
+    #     queryset = self.get_queryset()
+
+    #     # Subquery pour total payé
+    #     paiements = Payement_Offrande.objects.filter(
+    #         type_payement="in",
+    #         nom_offrande=OuterRef('nom_offrande'),
+    #         departement=OuterRef('nom_postnom'),
+    #     ).filter(
+    #         Q(nom_offrande__descript_recette__description_recette="Les engagement des adhérents") |
+    #         Q(nom_offrande__descript_recette__description_recette="LES ENGAGEMENTS DES ADHERENTS")
+    #     ).values('nom_offrande', 'departement').annotate(
+    #         total=Sum('montant')
+    #     ).values('total')
+
+    #     queryset = queryset.annotate(
+    #         total_paye=Subquery(paiements, output_field=DecimalField(max_digits=15, decimal_places=2))
+    #     )
+
+    #     # Calcul du reste
+    #     for obj in queryset:
+    #         obj.reste = (obj.montant or 0) - (obj.total_paye or 0)
+
+    #     serializer = self.get_serializer(queryset, many=True)
+    #     return Response({
+    #         "ahadi_data": serializer.data,
+    #     }, status=status.HTTP_200_OK)
     def get(self, request, *args, **kwargs):
+    
         queryset = self.get_queryset()
 
-        # Subquery pour total payé
+    
         paiements = Payement_Offrande.objects.filter(
             type_payement="in",
             nom_offrande=OuterRef('nom_offrande'),
             departement=OuterRef('nom_postnom'),
         ).filter(
-            Q(nom_offrande__descript_recette__description_recette="Les engagement des adhérents") |
-            Q(nom_offrande__descript_recette__description_recette="LES ENGAGEMENTS DES ADHERENTS")
+            Q(nom_offrande__descript_recette__description_recette__iexact="Les engagement des adhérents")
         ).values('nom_offrande', 'departement').annotate(
             total=Sum('montant')
         ).values('total')
 
         queryset = queryset.annotate(
             total_paye=Subquery(paiements, output_field=DecimalField(max_digits=15, decimal_places=2))
-        )
+        ).order_by('-id') 
 
-        # Calcul du reste
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+
+            for obj in page:
+                obj.reste = (obj.montant or 0) - (obj.total_paye or 0)
+            
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
         for obj in queryset:
             obj.reste = (obj.montant or 0) - (obj.total_paye or 0)
-
+        
         serializer = self.get_serializer(queryset, many=True)
-        return Response({
-            "ahadi_data": serializer.data,
-        }, status=status.HTTP_200_OK)
-
+        return Response(serializer.data)
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -807,6 +746,8 @@ class EtatBesoin_Mixins(
     queryset = EtatBesoin.objects.all()
     serializer_class = EtatBesoinSerializer
     lookup_field = 'pk'
+
+    pagination_class = Pagination_etat_besoin
 
     def get_queryset(self):
         # On récupère l'ID de l'église si présent
@@ -1364,6 +1305,7 @@ class LivreCaisseAPIView(APIView):
 
     #permission_classes = [IsAuthenticated]  
 
+    pagination_class = Pagination_livre_caisse
     def get(self, request, *args, **kwargs):
         user = request.user
         eglise_id = kwargs.get('eglise_id')

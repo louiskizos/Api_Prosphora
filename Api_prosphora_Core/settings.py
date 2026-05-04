@@ -63,8 +63,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 200
+    'DEFAULT_PAGINATION_CLASS': 'Api_prosphora_App.pagination.BaseCustomPagination',
+    #'PAGE_SIZE': 200
 }
 
 
