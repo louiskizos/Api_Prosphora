@@ -750,14 +750,12 @@ class EtatBesoin_Mixins(
     pagination_class = Pagination_etat_besoin
 
     def get_queryset(self):
-        # On récupère l'ID de l'église si présent
+        
         eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
 
-        # Si on liste (pas de pk dans kwargs), filtrer par eglise_id
         if 'pk' not in self.kwargs and eglise_id:
             return EtatBesoin.objects.filter(user__eglise_id=eglise_id)
 
-        # Pour retrieve, update, delete : ne pas filtrer par eglise_id
         return EtatBesoin.objects.all()
 
     def get(self, request, *args, **kwargs):

@@ -13,13 +13,13 @@ class BaseCustomPagination(PageNumberPagination):
         })
 
 class Pagination_payement_offrande(BaseCustomPagination):
-    page_size = 200
+    page_size = 13
 
 class Pagination_ahadi(BaseCustomPagination):
-    page_size = 400
+    page_size = 13
 
 class Pagination_etat_besoin(BaseCustomPagination):
-    page_size = 100
+    page_size = 9
 
 
 class Pagination_livre_caisse(BaseCustomPagination):
