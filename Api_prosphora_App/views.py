@@ -582,7 +582,8 @@ class Payement_Offrande_Mixins(
     mixins.CreateModelMixin,
     mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
-    mixins.ListModelMixin
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin
 ):
     serializer_class = PayementOffrandeSerializer
     lookup_field = 'pk'
@@ -1299,50 +1300,117 @@ class BilanAPIView(APIView):
 # =================== Rapport livre de caisse =======================================
 
 
+# class LivreCaisseAPIView(APIView):
+
+#     #permission_classes = [IsAuthenticated]  
+
+#     # pagination_class = Pagination_livre_caisse
+
+#     def get(self, request, *args, **kwargs):
+#         user = request.user
+#         eglise_id = kwargs.get('eglise_id')
+
+      
+#         if eglise_id:
+#             data_queryset = Payement_Offrande.objects.filter(
+#                 nom_offrande__descript_recette__user__eglise_id=eglise_id
+#             ).order_by('type_monaie', 'date_payement')
+#         elif hasattr(user, "eglise") and user.eglise:
+#             data_queryset = Payement_Offrande.objects.filter(
+#                 nom_offrande__descript_recette__user__eglise=user.eglise
+#             ).order_by('type_monaie', 'date_payement')
+#         else:
+#             return Response({"error": "Aucune église associée à l’utilisateur."}, status=400)
+
+        
+#         cumulative_sums_by_currency = {}
+#         processed_data = []
+
+#         for item in data_queryset:
+#             monnaie = item.type_monaie
+#             montant = item.montant or 0
+#             cumulative_sums_by_currency[monnaie] = cumulative_sums_by_currency.get(monnaie, 0)
+#             cumulative_sums_by_currency[monnaie] += montant if item.type_payement != 'out' else -montant
+
+#             processed_data.append({
+#                 'id': item.id,
+#                 'date_payement': item.date_payement,
+#                 'nom_offrande': str(item.nom_offrande),
+#                 'num_compte': str(item.nom_offrande.num_compte),
+#                 'type_payement': item.type_payement,
+#                 'motif': item.motif,
+#                 'type_monaie': monnaie,
+#                 'montant': montant,
+#                 'cumulative_sum': cumulative_sums_by_currency[monnaie],
+#             })
+
+#         return Response({'livre_caisse': processed_data}, status=200)
+
+
 class LivreCaisseAPIView(APIView):
 
-    #permission_classes = [IsAuthenticated]  
-
+    # permission_classes = [IsAuthenticated]
     pagination_class = Pagination_livre_caisse
+
     def get(self, request, *args, **kwargs):
         user = request.user
         eglise_id = kwargs.get('eglise_id')
 
-      
         if eglise_id:
-            data_queryset = Payement_Offrande.objects.filter(
+            queryset = Payement_Offrande.objects.filter(
                 nom_offrande__descript_recette__user__eglise_id=eglise_id
-            ).order_by('type_monaie', 'date_payement')
+            )
         elif hasattr(user, "eglise") and user.eglise:
-            data_queryset = Payement_Offrande.objects.filter(
+            queryset = Payement_Offrande.objects.filter(
                 nom_offrande__descript_recette__user__eglise=user.eglise
-            ).order_by('type_monaie', 'date_payement')
+            )
         else:
-            return Response({"error": "Aucune église associée à l’utilisateur."}, status=400)
+            return Response({"error": "Aucune église associée."}, status=400)
 
         
-        cumulative_sums_by_currency = {}
+        data_queryset = queryset.select_related('nom_offrande').order_by('type_monaie', 'date_payement')
+
+        cumulative_sums = {}
         processed_data = []
 
+        
         for item in data_queryset:
-            monnaie = item.type_monaie
-            montant = item.montant or 0
-            cumulative_sums_by_currency[monnaie] = cumulative_sums_by_currency.get(monnaie, 0)
-            cumulative_sums_by_currency[monnaie] += montant if item.type_payement != 'out' else -montant
+            monnaie = item.type_monaie or "USD"
+            montant = float(item.montant or 0)
+            
+            if monnaie not in cumulative_sums:
+                cumulative_sums[monnaie] = 0.0
+            
+            if item.type_payement != 'out':
+                cumulative_sums[monnaie] += montant
+            else:
+                cumulative_sums[monnaie] -= montant
+
+            num_c = "N/A"
+            if item.nom_offrande:
+
+                num_c = str(getattr(item.nom_offrande, 'num_compte', 'N/A'))
 
             processed_data.append({
                 'id': item.id,
                 'date_payement': item.date_payement,
-                'nom_offrande': str(item.nom_offrande),
-                'num_compte': str(item.nom_offrande.num_compte),
+                'nom_offrande': str(item.nom_offrande) if item.nom_offrande else "Inconnu",
+                'num_compte': num_c,
                 'type_payement': item.type_payement,
-                'motif': item.motif,
+                'motif': item.motif or "",
                 'type_monaie': monnaie,
                 'montant': montant,
-                'cumulative_sum': cumulative_sums_by_currency[monnaie],
+                'cumulative_sum': cumulative_sums[monnaie],
             })
 
-        return Response({'livre_caisse': processed_data}, status=200)
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(processed_data, request, view=self)
+        
+        if page is not None:
+            return paginator.get_paginated_response(page)
+
+        return Response({'results': processed_data}, status=200)
+
 
 
 class LivreCaisseHebdomadaireAPIView(APIView):
