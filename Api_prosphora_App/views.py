@@ -1266,6 +1266,145 @@ class DashboardView(APIView):
 
             "categorie_plus_lourde": categorie_plus_lourde
         })  
+
+
+
+
+
+class Dashboard_comptableView(APIView):
+
+    def get(self, request, eglise_id):
+
+        periode = request.GET.get("periode", "all")
+        devise = request.GET.get("devise", "cdf")
+
+        if devise not in ["cdf", "usd"]:
+            devise = "cdf"
+
+        now = datetime.now()
+
+        # =========================
+        # ENTREES
+        # =========================
+        payements = Payement_Offrande.objects.filter(
+            nom_offrande__descript_recette__user__eglise_id=eglise_id,
+            type_monaie=devise,
+            type_payement="in"
+        )
+
+        ahadis = Ahadi.objects.filter(
+            user__eglise_id=eglise_id,
+            type_monaie=devise
+        )
+
+        # =========================
+        # SORTIES
+        # =========================
+        depenses = EtatBesoin.objects.filter(
+            user__eglise_id=eglise_id,
+            type_monaie=devise,
+            validation_caisse=True
+        )
+
+        # =========================
+        # FILTRE PÉRIODE
+        # =========================
+        if periode == "mois":
+
+            payements = payements.filter(
+                date_payement__month=now.month,
+                date_payement__year=now.year
+            )
+
+            ahadis = ahadis.filter(
+                date_ahadi__month=now.month,
+                date_ahadi__year=now.year
+            )
+
+            depenses = depenses.filter(
+                date_etat_besoin__month=now.month,
+                date_etat_besoin__year=now.year
+            )
+
+        elif periode == "annee":
+
+            payements = payements.filter(date_payement__year=now.year)
+            ahadis = ahadis.filter(date_ahadi__year=now.year)
+            depenses = depenses.filter(date_etat_besoin__year=now.year)
+
+        # =========================
+        # TOTALS
+        # =========================
+        total_payements = payements.aggregate(total=Sum("montant"))["total"] or 0
+        total_ahadi = ahadis.aggregate(total=Sum("montant"))["total"] or 0
+        total_sorties = depenses.aggregate(total=Sum("montant"))["total"] or 0
+
+        total_entrees = total_payements + total_ahadi
+        solde = total_entrees - total_sorties
+
+        taux_consommation = (total_sorties / total_entrees * 100) if total_entrees > 0 else 0
+
+        # =========================
+        # GRAPH ENTREES
+        # =========================
+        entrees_graph = payements.annotate(
+            mois=TruncMonth("date_payement")
+        ).values("mois").annotate(
+            total=Sum("montant")
+        ).order_by("mois")
+
+        # =========================
+        # GRAPH SORTIES
+        # =========================
+        sorties_graph = depenses.annotate(
+            mois=TruncMonth("date_etat_besoin")
+        ).values("mois").annotate(
+            total=Sum("montant")
+        ).order_by("mois")
+
+        # =========================
+        # RÉPARTITION
+        # =========================
+        repartition = depenses.values("service").annotate(
+            total=Sum("montant")
+        ).order_by("-total")
+
+        top_categorie = repartition.first()
+
+        # =========================
+        # RESPONSE FINAL (API DASHBOARD)
+        # =========================
+        return Response({
+            "success": True,
+
+            # 📊 CARTES KPI
+            "kpis": {
+                "total_entrees": total_entrees,
+                "total_sorties": total_sorties,
+                "solde": solde,
+                "taux_consommation": round(taux_consommation, 2),
+                "nombre_entrees": payements.count() + ahadis.count()
+            },
+
+            # 📈 GRAPHIQUES
+            "charts": {
+                "entrees": list(entrees_graph),
+                "sorties": list(sorties_graph),
+            },
+
+            # 🧾 DÉPENSES PAR CATÉGORIE
+            "depenses_repartition": list(repartition),
+
+            # 🔥 TOP CATÉGORIE
+            "top_categorie": top_categorie["service"] if top_categorie else None,
+
+            # 💱 META
+            "filters": {
+                "periode": periode,
+                "devise": devise
+            }
+        })
+
 # ======================== Rapport Bilan =========================   
 
 

@@ -86,6 +86,7 @@ urlpatterns = [
 
 # ============ Dashboard  ===============
     path('dashboard_caissier/<int:eglise_id>/', DashboardView.as_view(), name='dashboard'),
+    path('dashboard_comptable/<int:eglise_id>/', Dashboard_comptableView.as_view(), name='dashboard'),
 
 # ============= Bilan ====================
 
