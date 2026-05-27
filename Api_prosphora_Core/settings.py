@@ -11,8 +11,8 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback-insecure-key-for-dev-only")
 
-DEBUG = os.getenv("DEBUG", "False").lower() == "True"
-
+# DEBUG = os.getenv("DEBUG", "False").lower() == "True"
+DEBUG = True
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
@@ -110,18 +110,26 @@ if DATABASE_URL:
             ssl_require=True
         )
   }
-    
-
-    
-    
-    # DATABASES = {
-    #     'default': {
-    #         'ENGINE': 'django.db.backends.sqlite3',
-    #         'NAME': BASE_DIR / 'db.sqlite3',
-    #     }
-    # }
 
 
+# DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.sqlite3',
+#             'NAME': BASE_DIR / 'db.sqlite3',
+#         }
+#     }
+
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'c2798164c_acedh_db',  # Créée préalablement dans cPanel
+#         'USER': 'c2798164c_root',    # Créé préalablement dans cPanel
+#         'PASSWORD': '*************',
+#         'HOST': 'acedh-rdc.org',                  # Ton nom de domaine sert de passerelle
+#         'PORT': '3306',                           # 3306 est le port standard de MySQL
+#     }
+# }
 
 
 

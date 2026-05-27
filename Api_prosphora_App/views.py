@@ -997,7 +997,6 @@ class QuarantePourcentMensuelAPIView(APIView):
                 "details_par_monnaie": details
             })
 
-        # -------- DETAILS OFFRANDES GROUPÉES PAR MOIS --------
         details_queryset = (
             queryset
             .filter(type_payement="in")
@@ -1148,6 +1147,206 @@ class DepensesAPIView(APIView):
             })
 
         return Response({"depenses": result}, status=200)  
+
+# ======================== DASHBOARD =========================
+
+from datetime import datetime
+
+from django.db.models import Sum
+from django.db.models.functions import TruncMonth
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
+from .models import (
+    Payement_Offrande,
+    EtatBesoin,
+    Ahadi
+)
+
+
+class DashboardView(APIView):
+
+    def get(self, request, eglise_id):
+
+        periode = request.GET.get("periode", "all")
+        devise = request.GET.get("devise", "cdf")
+
+        payements = Payement_Offrande.objects.filter(
+            nom_offrande__descript_recette__user__eglise_id=eglise_id,
+            type_monaie=devise, type_payement="in"
+        )
+        # payements = Payement_Offrande.objects.all()
+        # =========================
+        # DEPENSES
+        # =========================
+
+        depenses = EtatBesoin.objects.filter(
+            user__eglise_id=eglise_id,
+            type_monaie=devise,
+            validation_caisse=True
+        )
+
+        # =========================
+        # AHADI
+        # =========================
+
+        ahadis = Ahadi.objects.filter(
+            user__eglise_id=eglise_id,
+            type_monaie=devise
+        )
+
+        now = datetime.now()
+
+        # =========================
+        # FILTRE PERIODE
+        # =========================
+
+        if periode == "mois":
+
+            payements = payements.filter(
+                date_payement__month=now.month,
+                date_payement__year=now.year
+            )
+
+            depenses = depenses.filter(
+                date_etat_besoin__month=now.month,
+                date_etat_besoin__year=now.year
+            )
+
+            ahadis = ahadis.filter(
+                date_ahadi__month=now.month,
+                date_ahadi__year=now.year
+            )
+
+        elif periode == "annee":
+
+            payements = payements.filter(
+                date_payement__year=now.year
+            )
+
+            depenses = depenses.filter(
+                date_etat_besoin__year=now.year
+            )
+
+            ahadis = ahadis.filter(
+                date_ahadi__year=now.year
+            )
+
+        # =========================
+        # ENTREES
+        # =========================
+
+        total_payements = payements.aggregate(
+            total=Sum("montant")
+        )["total"] or 0
+
+        total_ahadi = ahadis.aggregate(
+            total=Sum("montant")
+        )["total"] or 0
+
+        total_entrees = (
+            total_payements +
+            total_ahadi
+        )
+
+        # =========================
+        # SORTIES
+        # =========================
+
+        total_sorties = depenses.aggregate(
+            total=Sum("montant")
+        )["total"] or 0
+
+        # =========================
+        # SOLDE
+        # =========================
+
+        solde = total_entrees - total_sorties
+
+        # =========================
+        # TAUX CONSOMMATION
+        # =========================
+
+        taux_consommation = 0
+
+        if total_entrees > 0:
+
+            taux_consommation = (
+                total_sorties / total_entrees
+            ) * 100
+
+        # =========================
+        # GRAPHIQUE ENTREES
+        # =========================
+
+        entrees_graph = (
+            payements
+            .annotate(mois=TruncMonth("date_payement"))
+            .values("mois")
+            .annotate(total=Sum("montant"))
+            .order_by("mois")
+        )
+
+        # =========================
+        # GRAPHIQUE SORTIES
+        # =========================
+
+        sorties_graph = (
+            depenses
+            .annotate(mois=TruncMonth("date_etat_besoin"))
+            .values("mois")
+            .annotate(total=Sum("montant"))
+            .order_by("mois")
+        )
+
+        # =========================
+        # REPARTITION DEPENSES
+        # =========================
+
+        repartition = (
+            depenses
+            .values("service")
+            .annotate(total=Sum("montant"))
+            .order_by("-total")
+        )
+
+        categorie_lourde = repartition.first()
+
+        # =========================
+        # RESPONSE
+        # =========================
+
+        return Response({
+
+            "cartes": {
+
+                "entrees": total_entrees,
+
+                "sorties": total_sorties,
+
+                "solde": solde,
+
+                "taux_consommation":
+                    round(taux_consommation, 2)
+            },
+
+            "graphique": {
+
+                "entrees": list(entrees_graph),
+
+                "sorties": list(sorties_graph)
+            },
+
+            "repartition_depenses":
+                list(repartition),
+
+            "categorie_plus_lourde":
+
+                categorie_lourde["service"]
+                if categorie_lourde
+                else None
+        })
     
 # ======================== Rapport Bilan =========================   
 

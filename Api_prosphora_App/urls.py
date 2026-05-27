@@ -84,6 +84,8 @@ urlpatterns = [
    # path('delete_echange_monaie/<int:eglise_id>/<str:pk>/', EchangeMonaie_Mixins.as_view(), name='delete_echange_monaie'),
    # path('update_echange_monaie/<int:eglise_id>/<str:pk>/', EchangeMonaie_Mixins.as_view(), name='update_echange_monaie'),
 
+# ============ Dashboard  ===============
+    path('dashboard_caissier/<int:eglise_id>/', DashboardView.as_view(), name='dashboard'),
 
 # ============= Bilan ====================
 
