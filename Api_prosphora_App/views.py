@@ -744,15 +744,24 @@ class EtatBesoin_Mixins(
 
     pagination_class = Pagination_etat_besoin
 
-    def get_queryset(self):
+    # def get_queryset(self):
         
+    #     eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
+
+    #     if 'pk' not in self.kwargs and eglise_id:
+    #         return EtatBesoin.objects.filter(user__eglise_id=eglise_id)
+
+    #     return  EtatBesoin.objects.order_by('-id')
+    def get_queryset(self):
         eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
 
-        if 'pk' not in self.kwargs and eglise_id:
-            return EtatBesoin.objects.filter(user__eglise_id=eglise_id)
+        queryset = EtatBesoin.objects.all()
 
-        return EtatBesoin.objects.all()
-
+        if eglise_id:
+            queryset = queryset.filter(user__eglise_id=eglise_id)
+        
+        return queryset.order_by('-date_etat_besoin')
+    
     def get(self, request, *args, **kwargs):
         if 'pk' in kwargs:
             return self.retrieve(request, *args, **kwargs)
