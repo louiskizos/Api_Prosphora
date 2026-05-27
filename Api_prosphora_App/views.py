@@ -581,10 +581,16 @@ class Payement_Offrande_Mixins(
 ):
     serializer_class = PayementOffrandeSerializer
     lookup_field = 'pk'
-    
-   # pagination_class = None  # Désactive la pagination pour cette vue
-    
     pagination_class = Pagination_payement_offrande
+    
+    filter_backends = [filters.SearchFilter]
+
+    search_fields = [
+        'departement',
+        'nom_offrande__nom_offrande',
+        'type_monaie',
+        'montant',
+    ]
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -662,13 +668,18 @@ class Ahadi_Mixins(
 
         queryset = Ahadi.objects.filter(
             nom_offrande__descript_recette__user__eglise_id=eglise_id
-        )
-
+                )
         paiements = Payement_Offrande.objects.filter(
             type_payement="in",
             nom_offrande=OuterRef('nom_offrande'),
             departement=OuterRef('nom_postnom'),
-            nom_offrande__descript_recette__description_recette__iexact="Les engagement des adhérents"
+        ).filter(
+            Q(
+                nom_offrande__descript_recette__description_recette__iexact="Les engagement des adhérents"
+            ) |
+            Q(
+                nom_offrande__descript_recette__description_recette__iexact="LES ENGAGEMENTS DES ADHERENTS"
+            )
         ).values('nom_offrande').annotate(
             total=Sum('montant')
         ).values('total')
@@ -723,16 +734,20 @@ class Ahadi_Mixins_pdf(
     
         queryset = self.get_queryset()
 
-    
         paiements = Payement_Offrande.objects.filter(
-            type_payement="in",
-            nom_offrande=OuterRef('nom_offrande'),
-            departement=OuterRef('nom_postnom'),
-        ).filter(
-            Q(nom_offrande__descript_recette__description_recette__iexact="Les engagement des adhérents")
-        ).values('nom_offrande', 'departement').annotate(
-            total=Sum('montant')
-        ).values('total')
+        type_payement="in",
+        nom_offrande=OuterRef('nom_offrande'),
+        departement=OuterRef('nom_postnom'),
+    ).filter(
+        Q(
+            nom_offrande__descript_recette__description_recette__iexact="Les engagement des adhérents"
+        ) |
+        Q(
+            nom_offrande__descript_recette__description_recette__iexact="LES ENGAGEMENTS DES ADHERENTS"
+        )
+    ).values('nom_offrande').annotate(
+        total=Sum('montant')
+    ).values('total')
 
         queryset = queryset.annotate(
             total_paye=Subquery(paiements, output_field=DecimalField(max_digits=15, decimal_places=2))
@@ -770,16 +785,16 @@ class EtatBesoin_Mixins(
     serializer_class = EtatBesoinSerializer
     lookup_field = 'pk'
 
+    filter_backends = [filters.SearchFilter]
+
+    search_fields = [
+        'service',
+        'designation',
+        'type_monaie',
+        'montant',
+    ]
     pagination_class = Pagination_etat_besoin
 
-    # def get_queryset(self):
-        
-    #     eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
-
-    #     if 'pk' not in self.kwargs and eglise_id:
-    #         return EtatBesoin.objects.filter(user__eglise_id=eglise_id)
-
-    #     return  EtatBesoin.objects.order_by('-id')
     def get_queryset(self):
         eglise_id = self.kwargs.get('eglise_id') or self.request.query_params.get('eglise_id')
 
