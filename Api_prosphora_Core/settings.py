@@ -11,8 +11,8 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback-insecure-key-for-dev-only")
 
-# DEBUG = os.getenv("DEBUG", "False").lower() == "True"
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False").lower() == "True"
+#DEBUG = True
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
@@ -98,38 +98,27 @@ AUTH_USER_MODEL = "Api_prosphora_App.App_user"
 
 load_dotenv()
 
-# BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-# DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# if DATABASE_URL:
-#     DATABASES = {
-#         'default': dj_database_url.parse(
-#             DATABASE_URL,
-#             conn_max_age=600,
-#             ssl_require=True
-#         )
-#   }
-
-
-DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True
+        )
+  }
 
 
 # DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'c2798164c_acedh_db',  # Créée préalablement dans cPanel
-#         'USER': 'c2798164c_root',    # Créé préalablement dans cPanel
-#         'PASSWORD': '*************',
-#         'HOST': 'acedh-rdc.org',                  # Ton nom de domaine sert de passerelle
-#         'PORT': '3306',                           # 3306 est le port standard de MySQL
+#         'default': {
+#             'ENGINE': 'django.db.backends.sqlite3',
+#             'NAME': BASE_DIR / 'db.sqlite3',
+#         }
 #     }
-# }
+
 
 
 
