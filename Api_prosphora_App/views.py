@@ -14,12 +14,6 @@ from django.db.models.functions import Coalesce, ExtractYear, Cast, TruncMonth
 from django.contrib.auth import authenticate, login
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-import os
-from django.http import FileResponse
-from django.core import management
-import tempfile
-from collections import defaultdict
-from datetime import date, timedelta
 from collections import defaultdict
 from decimal import Decimal
 from datetime import date
@@ -27,8 +21,8 @@ from django.db.models.functions import Coalesce, TruncMonth
 from django.db.models import Sum, Max, F, Value, DecimalField, ExpressionWrapper, OuterRef, Subquery
 from django.db.models.fields import DateTimeField
 from .pagination import *
-from rest_framework.views import APIView
-from rest_framework.response import Response
+from datetime import datetime
+
 
 
 class QuarantePourcentMensuelAPIView(APIView):
@@ -1150,19 +1144,21 @@ class DepensesAPIView(APIView):
 
 # ======================== DASHBOARD =========================
 
-from datetime import datetime
 
-from django.db.models import Sum
-from django.db.models.functions import TruncMonth
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-
-from .models import (
-    Payement_Offrande,
-    EtatBesoin,
-    Ahadi
-)
+def filter_by_period(queryset, date_field, periode, now):
+    if periode == "mois":
+        return queryset.filter(
+            **{
+                f"{date_field}__month": now.month,
+                f"{date_field}__year": now.year
+            }
+        )
+    elif periode == "annee":
+        return queryset.filter(
+            **{f"{date_field}__year": now.year}
+        )
+    return queryset
 
 
 class DashboardView(APIView):
@@ -1172,114 +1168,55 @@ class DashboardView(APIView):
         periode = request.GET.get("periode", "all")
         devise = request.GET.get("devise", "cdf")
 
+        if devise not in ["cdf", "usd"]:
+            devise = "cdf"
+
+        now = datetime.now()
+
+        # =========================
+        # ENTRÉES
+        # =========================
         payements = Payement_Offrande.objects.filter(
             nom_offrande__descript_recette__user__eglise_id=eglise_id,
-            type_monaie=devise, type_payement="in"
-        )
-        # payements = Payement_Offrande.objects.all()
-        # =========================
-        # DEPENSES
-        # =========================
-
-        depenses = EtatBesoin.objects.filter(
-            user__eglise_id=eglise_id,
             type_monaie=devise,
-            validation_caisse=True
+            type_payement="in"
         )
-
-        # =========================
-        # AHADI
-        # =========================
+        payements = filter_by_period(payements, "date_payement", periode, now)
 
         ahadis = Ahadi.objects.filter(
             user__eglise_id=eglise_id,
             type_monaie=devise
         )
-
-        now = datetime.now()
-
-        # =========================
-        # FILTRE PERIODE
-        # =========================
-
-        if periode == "mois":
-
-            payements = payements.filter(
-                date_payement__month=now.month,
-                date_payement__year=now.year
-            )
-
-            depenses = depenses.filter(
-                date_etat_besoin__month=now.month,
-                date_etat_besoin__year=now.year
-            )
-
-            ahadis = ahadis.filter(
-                date_ahadi__month=now.month,
-                date_ahadi__year=now.year
-            )
-
-        elif periode == "annee":
-
-            payements = payements.filter(
-                date_payement__year=now.year
-            )
-
-            depenses = depenses.filter(
-                date_etat_besoin__year=now.year
-            )
-
-            ahadis = ahadis.filter(
-                date_ahadi__year=now.year
-            )
-
-        # =========================
-        # ENTREES
-        # =========================
-
-        total_payements = payements.aggregate(
-            total=Sum("montant")
-        )["total"] or 0
-
-        total_ahadi = ahadis.aggregate(
-            total=Sum("montant")
-        )["total"] or 0
-
-        total_entrees = (
-            total_payements +
-            total_ahadi
-        )
+        ahadis = filter_by_period(ahadis, "date_ahadi", periode, now)
 
         # =========================
         # SORTIES
         # =========================
-
-        total_sorties = depenses.aggregate(
-            total=Sum("montant")
-        )["total"] or 0
+        depenses = EtatBesoin.objects.filter(
+            user__eglise_id=eglise_id,
+            type_monaie=devise,
+            validation_caisse=True
+        )
+        depenses = filter_by_period(depenses, "date_etat_besoin", periode, now)
 
         # =========================
-        # SOLDE
+        # TOTALS
         # =========================
+        total_payements = payements.aggregate(total=Sum("montant"))["total"] or 0
+        total_ahadi = ahadis.aggregate(total=Sum("montant"))["total"] or 0
+        total_sorties = depenses.aggregate(total=Sum("montant"))["total"] or 0
 
+        total_entrees = total_payements + total_ahadi
         solde = total_entrees - total_sorties
 
-        # =========================
-        # TAUX CONSOMMATION
-        # =========================
-
-        taux_consommation = 0
-
-        if total_entrees > 0:
-
-            taux_consommation = (
-                total_sorties / total_entrees
-            ) * 100
+        taux_consommation = (
+            (total_sorties / total_entrees) * 100
+            if total_entrees > 0 else 0
+        )
 
         # =========================
-        # GRAPHIQUE ENTREES
+        # GRAPHIQUES
         # =========================
-
         entrees_graph = (
             payements
             .annotate(mois=TruncMonth("date_payement"))
@@ -1287,10 +1224,6 @@ class DashboardView(APIView):
             .annotate(total=Sum("montant"))
             .order_by("mois")
         )
-
-        # =========================
-        # GRAPHIQUE SORTIES
-        # =========================
 
         sorties_graph = (
             depenses
@@ -1301,9 +1234,8 @@ class DashboardView(APIView):
         )
 
         # =========================
-        # REPARTITION DEPENSES
+        # RÉPARTITION
         # =========================
-
         repartition = (
             depenses
             .values("service")
@@ -1312,42 +1244,28 @@ class DashboardView(APIView):
         )
 
         categorie_lourde = repartition.first()
+        categorie_plus_lourde = categorie_lourde["service"] if categorie_lourde else None
 
         # =========================
         # RESPONSE
         # =========================
-
         return Response({
-
             "cartes": {
-
                 "entrees": total_entrees,
-
                 "sorties": total_sorties,
-
                 "solde": solde,
-
-                "taux_consommation":
-                    round(taux_consommation, 2)
+                "taux_consommation": round(taux_consommation, 2)
             },
 
             "graphique": {
-
                 "entrees": list(entrees_graph),
-
                 "sorties": list(sorties_graph)
             },
 
-            "repartition_depenses":
-                list(repartition),
+            "repartition_depenses": list(repartition),
 
-            "categorie_plus_lourde":
-
-                categorie_lourde["service"]
-                if categorie_lourde
-                else None
-        })
-    
+            "categorie_plus_lourde": categorie_plus_lourde
+        })  
 # ======================== Rapport Bilan =========================   
 
 
