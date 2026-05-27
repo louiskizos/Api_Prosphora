@@ -179,31 +179,39 @@ class PrevoirSerializer(serializers.ModelSerializer):
 
 
 
-class AhadiSerializer(serializers.ModelSerializer):
+# class AhadiSerializer(serializers.ModelSerializer):
     
-    total_paye = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
-    reste = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
+#     total_paye = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
+#     reste = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
+
+#     class Meta:
+#         model = Ahadi
+#         fields = '__all__'
+
+#     def __init__(self, *args, **kwargs):
+#         eglise_id = kwargs.pop('eglise_id', None)
+#         super().__init__(*args, **kwargs)
+
+#         request = self.context.get('request', None)
+#         user = getattr(request, "user", None)
+
+#         if eglise_id:
+#             self.fields['descript_recette'].queryset = (
+#                 self.fields['descript_recette'].queryset.filter(user__eglise_id=eglise_id)
+#             )
+#         elif user and hasattr(user, "eglise"):
+#             self.fields['descript_recette'].queryset = (
+#                 self.fields['descript_recette'].queryset.filter(user__eglise=user.eglise)
+#             )
+class AhadiSerializer(serializers.ModelSerializer):
+    reste = serializers.SerializerMethodField()
+
+    def get_reste(self, obj):
+        return (obj.montant or 0) - (obj.total_paye or 0)
 
     class Meta:
         model = Ahadi
         fields = '__all__'
-
-    def __init__(self, *args, **kwargs):
-        eglise_id = kwargs.pop('eglise_id', None)
-        super().__init__(*args, **kwargs)
-
-        request = self.context.get('request', None)
-        user = getattr(request, "user", None)
-
-        if eglise_id:
-            self.fields['descript_recette'].queryset = (
-                self.fields['descript_recette'].queryset.filter(user__eglise_id=eglise_id)
-            )
-        elif user and hasattr(user, "eglise"):
-            self.fields['descript_recette'].queryset = (
-                self.fields['descript_recette'].queryset.filter(user__eglise=user.eglise)
-            )
-
 
 class EtatBesoinSerializer(serializers.ModelSerializer):
     class Meta:

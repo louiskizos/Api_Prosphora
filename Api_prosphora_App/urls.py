@@ -57,6 +57,7 @@ urlpatterns = [
 # ============= Ahadi ====================
 
     path('ahadi/<int:eglise_id>/', Ahadi_Mixins.as_view(), name='liste-ahadi'),
+    path('ahadi_pdf/<int:eglise_id>/', Ahadi_Mixins_pdf.as_view(), name='liste-ahadi-pdf'),
     path('delete_ahadi/<int:eglise_id>/<str:pk>/', Ahadi_Mixins.as_view(), name='delete_ahadi'),
     path('update_ahadi/<int:eglise_id>/<str:pk>/', Ahadi_Mixins.as_view(), name='update_ahadi'),
    # path('update_ahadi/<uuid:eglise_id>/<uuid:pk>/', Ahadi_Mixins.as_view(), name='update_ahadi'),

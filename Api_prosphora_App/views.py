@@ -22,7 +22,7 @@ from django.db.models import Sum, Max, F, Value, DecimalField, ExpressionWrapper
 from django.db.models.fields import DateTimeField
 from .pagination import *
 from datetime import datetime
-
+from rest_framework import filters
 
 
 class QuarantePourcentMensuelAPIView(APIView):
@@ -642,43 +642,83 @@ class Ahadi_Mixins(
     generics.GenericAPIView
 ):
     serializer_class = AhadiSerializer
+    pagination_class = Pagination_ahadi
     lookup_field = 'pk'
 
-    pagination_class = Pagination_ahadi
-    
+    filter_backends = [filters.SearchFilter]
+
+    search_fields = [
+        'nom_postnom',
+        'motif',
+        'type_monaie',
+        'montant',
+    ]
+
+    def get_queryset(self):
+        eglise_id = self.kwargs.get('eglise_id')
+
+        if not eglise_id:
+            return Ahadi.objects.none()
+
+        queryset = Ahadi.objects.filter(
+            nom_offrande__descript_recette__user__eglise_id=eglise_id
+        )
+
+        paiements = Payement_Offrande.objects.filter(
+            type_payement="in",
+            nom_offrande=OuterRef('nom_offrande'),
+            departement=OuterRef('nom_postnom'),
+            nom_offrande__descript_recette__description_recette__iexact="Les engagement des adhérents"
+        ).values('nom_offrande').annotate(
+            total=Sum('montant')
+        ).values('total')
+
+        return queryset.annotate(
+            total_paye=Subquery(
+                paiements,
+                output_field=DecimalField(max_digits=15, decimal_places=2)
+            )
+        ).order_by('-id')
+
+    def filter_queryset(self, queryset):
+        return super().filter_queryset(queryset)
+
+    def get(self, request, *args, **kwargs):
+        if 'pk' in kwargs:
+            return self.retrieve(request, *args, **kwargs)
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Ahadi créé.", "data": serializer.data}, status=201)
+
+    def patch(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
+
+class Ahadi_Mixins_pdf(
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+    generics.GenericAPIView
+):
+    serializer_class = AhadiSerializer
+    lookup_field = 'pk'
+
     def get_queryset(self):
         eglise_id = self.kwargs.get('eglise_id')
         if not eglise_id:
             return Ahadi.objects.none()
         return Ahadi.objects.filter(nom_offrande__descript_recette__user__eglise_id=eglise_id)
 
-    # def get(self, request, *args, **kwargs):
-    #     queryset = self.get_queryset()
-
-    #     # Subquery pour total payé
-    #     paiements = Payement_Offrande.objects.filter(
-    #         type_payement="in",
-    #         nom_offrande=OuterRef('nom_offrande'),
-    #         departement=OuterRef('nom_postnom'),
-    #     ).filter(
-    #         Q(nom_offrande__descript_recette__description_recette="Les engagement des adhérents") |
-    #         Q(nom_offrande__descript_recette__description_recette="LES ENGAGEMENTS DES ADHERENTS")
-    #     ).values('nom_offrande', 'departement').annotate(
-    #         total=Sum('montant')
-    #     ).values('total')
-
-    #     queryset = queryset.annotate(
-    #         total_paye=Subquery(paiements, output_field=DecimalField(max_digits=15, decimal_places=2))
-    #     )
-
-    #     # Calcul du reste
-    #     for obj in queryset:
-    #         obj.reste = (obj.montant or 0) - (obj.total_paye or 0)
-
-    #     serializer = self.get_serializer(queryset, many=True)
-    #     return Response({
-    #         "ahadi_data": serializer.data,
-    #     }, status=status.HTTP_200_OK)
     def get(self, request, *args, **kwargs):
     
         queryset = self.get_queryset()
@@ -713,18 +753,6 @@ class Ahadi_Mixins(
         
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({"message": "Ahadi créé.", "data": serializer.data}, status=201)
-
-    def patch(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs, partial=True)
-
-    def delete(self, request, *args, **kwargs):
-        return self.destroy(request, *args, **kwargs)
 
 
 
@@ -1156,7 +1184,7 @@ class DepensesAPIView(APIView):
 
 
 def filter_by_period(queryset, date_field, periode, now):
-    
+
     if periode == "mois":
         return queryset.filter(
             **{
