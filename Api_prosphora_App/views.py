@@ -1156,6 +1156,7 @@ class DepensesAPIView(APIView):
 
 
 def filter_by_period(queryset, date_field, periode, now):
+    
     if periode == "mois":
         return queryset.filter(
             **{
