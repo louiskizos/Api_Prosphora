@@ -11,8 +11,8 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback-insecure-key-for-dev-only")
 
-#DEBUG = os.getenv("DEBUG", "False").lower() == "True"
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False").lower() == "True"
+#DEBUG = True
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
