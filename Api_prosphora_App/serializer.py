@@ -148,17 +148,45 @@ class PrevoirSerializer(serializers.ModelSerializer):
             self.fields['descript_prevision'].queryset = self.fields['descript_prevision'].queryset.none()
 
 
+# class AhadiSerializer(serializers.ModelSerializer):
+
+#     total_paye = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
+#     reste = serializers.SerializerMethodField()
+
+#     def get_reste(self, obj):
+#         return (obj.montant or 0) - (obj.total_paye or 0)
+
+#     class Meta:
+#         model = Ahadi
+#         fields = '__all__'
+
+from django.db.models import Sum
+
 class AhadiSerializer(serializers.ModelSerializer):
-
-    total_paye = serializers.DecimalField(max_digits=15, decimal_places=2, read_only=True)
+    total_paye = serializers.SerializerMethodField()
     reste = serializers.SerializerMethodField()
-
-    def get_reste(self, obj):
-        return (obj.montant or 0) - (obj.total_paye or 0)
 
     class Meta:
         model = Ahadi
         fields = '__all__'
+
+    def get_total_paye(self, obj):
+        if hasattr(obj, 'total_paye') and obj.total_paye is not None:
+            return obj.total_paye
+        
+        total = Payement_Offrande.objects.filter(
+            type_payement="in",
+            nom_offrande=obj.nom_offrande,
+            departement=obj.nom_postnom
+        ).filter(
+            nom_offrande__descript_recette__description_recette__iexact="Les engagement des adhérents"
+        ).aggregate(total=Sum('montant'))['total']
+
+        return total or 0
+
+    def get_reste(self, obj):
+        total_paye = self.get_total_paye(obj)
+        return (obj.montant or 0) - total_paye
 
 class EtatBesoinSerializer(serializers.ModelSerializer):
     class Meta:

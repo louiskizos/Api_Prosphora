@@ -712,6 +712,9 @@ class Ahadi_Mixins(
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
 
+from django.db.models import Q, Sum, OuterRef, Subquery, DecimalField
+from rest_framework import mixins, generics, status
+from rest_framework.response import Response
 
 class Ahadi_Mixins_pdf(
     mixins.CreateModelMixin,
@@ -728,48 +731,29 @@ class Ahadi_Mixins_pdf(
         eglise_id = self.kwargs.get('eglise_id')
         if not eglise_id:
             return Ahadi.objects.none()
-        return Ahadi.objects.filter(nom_offrande__descript_recette__user__eglise_id=eglise_id)
-
-    def get(self, request, *args, **kwargs):
-    
-        queryset = self.get_queryset()
+            
+        queryset = Ahadi.objects.filter(nom_offrande__descript_recette__user__eglise_id=eglise_id)
 
         paiements = Payement_Offrande.objects.filter(
-        type_payement="in",
-        nom_offrande=OuterRef('nom_offrande'),
-        departement=OuterRef('nom_postnom'),
-    ).filter(
-        Q(
-            nom_offrande__descript_recette__description_recette__iexact="Les engagement des adhérents"
-        ) |
-        Q(
-            nom_offrande__descript_recette__description_recette__iexact="LES ENGAGEMENTS DES ADHERENTS"
-        )
-    ).values('nom_offrande').annotate(
-        total=Sum('montant')
-    ).values('total')
+            type_payement="in",
+            nom_offrande=OuterRef('nom_offrande'),
+            departement=OuterRef('nom_postnom'),
+        ).filter(
+            Q(nom_offrande__descript_recette__description_recette__iexact="Les engagement des adhérents") |
+            Q(nom_offrande__descript_recette__description_recette__iexact="LES ENGAGEMENTS DES ADHERENTS")
+        ).values('nom_offrande').annotate(
+            total=Sum('montant')
+        ).values('total')
 
-        queryset = queryset.annotate(
+        return queryset.annotate(
             total_paye=Subquery(paiements, output_field=DecimalField(max_digits=15, decimal_places=2))
-        ).order_by('-id') 
+        ).order_by('-id')
 
-        page = self.paginate_queryset(queryset)
-        
-        if page is not None:
-
-            for obj in page:
-                obj.reste = (obj.montant or 0) - (obj.total_paye or 0)
+    def get(self, request, *args, **kwargs):
+        if kwargs.get('pk'):
+            return self.retrieve(request, *args, **kwargs)
             
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        for obj in queryset:
-            obj.reste = (obj.montant or 0) - (obj.total_paye or 0)
-        
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-
+        return self.list(request, *args, **kwargs)
 
 # ======================== ETAT DE BESOIN =========================
 
