@@ -1749,11 +1749,11 @@ class LivreCaisseAPIView(APIView):
                 'cumulative_sum': cumulative_sums[monnaie],
             })
 
-        paginator = self.pagination_class()
-        page = paginator.paginate_queryset(processed_data, request, view=self)
+        # paginator = self.pagination_class()
+        # page = paginator.paginate_queryset(processed_data, request, view=self)
         
-        if page is not None:
-            return paginator.get_paginated_response(page)
+        # if page is not None:
+        #     return paginator.get_paginated_response(page)
 
         return Response({'results': processed_data}, status=200)
 
