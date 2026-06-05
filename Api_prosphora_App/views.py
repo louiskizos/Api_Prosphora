@@ -712,10 +712,48 @@ class Ahadi_Mixins(
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
 
-from django.db.models import Q, Sum, OuterRef, Subquery, DecimalField
-from rest_framework import mixins, generics, status
-from rest_framework.response import Response
+# from django.db.models import Q, Sum, OuterRef, Subquery, DecimalField
+# from rest_framework import mixins, generics, status
+# from rest_framework.response import Response
 
+# class Ahadi_Mixins_pdf(
+#     mixins.CreateModelMixin,
+#     mixins.RetrieveModelMixin,
+#     mixins.UpdateModelMixin,
+#     mixins.DestroyModelMixin,
+#     mixins.ListModelMixin,
+#     generics.GenericAPIView
+# ):
+#     serializer_class = AhadiSerializer
+#     lookup_field = 'pk'
+
+#     def get_queryset(self):
+#         eglise_id = self.kwargs.get('eglise_id')
+#         if not eglise_id:
+#             return Ahadi.objects.none()
+            
+#         queryset = Ahadi.objects.filter(nom_offrande__descript_recette__user__eglise_id=eglise_id)
+
+#         paiements = Payement_Offrande.objects.filter(
+#             type_payement="in",
+#             nom_offrande=OuterRef('nom_offrande'),
+#             departement=OuterRef('nom_postnom'),
+#         ).filter(
+#             Q(nom_offrande__descript_recette__description_recette__iexact="Les engagement des adhérents") |
+#             Q(nom_offrande__descript_recette__description_recette__iexact="LES ENGAGEMENTS DES ADHERENTS")
+#         ).values('nom_offrande').annotate(
+#             total=Sum('montant')
+#         ).values('total')
+
+#         return queryset.annotate(
+#             total_paye=Subquery(paiements, output_field=DecimalField(max_digits=15, decimal_places=2))
+#         ).order_by('-id')
+
+#     def get(self, request, *args, **kwargs):
+#         if kwargs.get('pk'):
+#             return self.retrieve(request, *args, **kwargs)
+            
+#         return self.list(request, *args, **kwargs)
 class Ahadi_Mixins_pdf(
     mixins.CreateModelMixin,
     mixins.RetrieveModelMixin,
@@ -726,14 +764,20 @@ class Ahadi_Mixins_pdf(
 ):
     serializer_class = AhadiSerializer
     lookup_field = 'pk'
+    # Assurez-vous que ces lignes sont présentes pour la recherche
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter] 
+    search_fields = ['nom_postnom', 'nom_offrande__nom'] # Ajustez selon vos besoins
 
     def get_queryset(self):
         eglise_id = self.kwargs.get('eglise_id')
         if not eglise_id:
             return Ahadi.objects.none()
             
-        queryset = Ahadi.objects.filter(nom_offrande__descript_recette__user__eglise_id=eglise_id)
+        queryset = Ahadi.objects.filter(
+            nom_offrande__descript_recette__user__eglise_id=eglise_id
+        )
 
+        # La sous-requête pour total_paye
         paiements = Payement_Offrande.objects.filter(
             type_payement="in",
             nom_offrande=OuterRef('nom_offrande'),
@@ -749,12 +793,21 @@ class Ahadi_Mixins_pdf(
             total_paye=Subquery(paiements, output_field=DecimalField(max_digits=15, decimal_places=2))
         ).order_by('-id')
 
+    # --- LE SECRET EST ICI ---
     def get(self, request, *args, **kwargs):
-        if kwargs.get('pk'):
+        if 'pk' in kwargs:
             return self.retrieve(request, *args, **kwargs)
-            
+        # On utilise self.list car elle appelle self.filter_queryset() automatiquement
         return self.list(request, *args, **kwargs)
 
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
 # ======================== ETAT DE BESOIN =========================
 
 class EtatBesoin_Mixins(
@@ -1643,7 +1696,7 @@ class BilanAPIView(APIView):
 class LivreCaisseAPIView(APIView):
 
     # permission_classes = [IsAuthenticated]
-    pagination_class = Pagination_livre_caisse
+   # pagination_class = Pagination_livre_caisse
 
     def get(self, request, *args, **kwargs):
         user = request.user
