@@ -637,6 +637,251 @@ class Payement_Offrande_Mixins(
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
 
+
+
+# class Payements_Offrande_Mixins(
+#     generics.GenericAPIView,
+#     mixins.CreateModelMixin,
+#     mixins.UpdateModelMixin,
+#     mixins.DestroyModelMixin,
+#     mixins.ListModelMixin,
+#     mixins.RetrieveModelMixin
+# ):
+#     serializer_class = PayementOffrandeSerializer
+#     lookup_field = 'pk'
+#     pagination_class = Pagination_payement_offrande
+    
+#     filter_backends = [filters.SearchFilter]
+
+#     search_fields = [
+#         'departement',
+#         'nom_offrande__nom_offrande',
+#         'type_monaie',
+#         'montant',
+#     ]
+    
+#     def get_serializer_context(self):
+#         context = super().get_serializer_context()
+#         context['eglise_id'] = self.kwargs.get('eglise_id')
+#         return context
+
+#     def get_queryset(self):
+#         user = self.request.user
+#         pk = self.kwargs.get('pk')
+#         eglise_id = self.kwargs.get('eglise_id')
+
+#         queryset = Payement_Offrande.objects.select_related('nom_offrande').all()
+
+#         if eglise_id:
+#             queryset = queryset.filter(
+#                 nom_offrande__descript_recette__user__eglise_id=eglise_id
+#             )
+#         elif getattr(user, "is_authenticated", False) and hasattr(user, "eglise") and user.eglise:
+#             queryset = queryset.filter(
+#                 nom_offrande__descript_recette__user__eglise=user.eglise
+#             )
+#         else:
+#             queryset = Payement_Offrande.objects.none()
+
+#         if pk:
+#             queryset = queryset.filter(pk=pk)
+
+#         return queryset.order_by('-date_payement')
+
+#     def get(self, request, *args, **kwargs):
+#         if 'pk' in kwargs:
+#             return self.retrieve(request, *args, **kwargs)
+#         return self.list(request, *args, **kwargs)
+
+#     def post(self, request, *args, **kwargs):
+#         type_payement_actuel = request.data.get('type_payement')
+#         nom_offrande_id = request.data.get('nom_offrande')
+#         montant_actuel = float(request.data.get('montant', 0))
+#         type_monaie = request.data.get('type_monaie', 'CDF')
+
+#         # 1. Somme de toutes les entrées ('in') historiques
+#         totaux_in = Payement_Offrande.objects.filter(
+#             nom_offrande_id=nom_offrande_id,
+#             type_payement='in',
+#             type_monaie=type_monaie
+#         ).aggregate(total=Sum('montant'))['total'] or 0
+
+#         # 2. Somme de toutes les sorties ('out') historiques déjà effectuées
+#         totaux_out = Payement_Offrande.objects.filter(
+#             nom_offrande_id=nom_offrande_id,
+#             type_payement='out',
+#             type_monaie=type_monaie
+#         ).aggregate(total=Sum('montant'))['total'] or 0
+
+#         # 3. Calcul du solde réel disponible (Entrées - Sorties)
+#         solde_disponible = float(totaux_in) - float(totaux_out)
+
+#         if type_payement_actuel == 'out':
+#             # Validation : la sortie ne peut pas dépasser le solde net restant
+#             if montant_actuel > solde_disponible:
+#                 return Response(
+#                     {
+#                         "error": f"Solde insuffisant. Disponible: {solde_disponible} {type_monaie.lower()}. "
+#                                  f"Tentative de sortie: {montant_actuel} {type_monaie.lower()}."
+#                     },
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#         return self.create(request, *args, **kwargs)
+
+#     def patch(self, request, *args, **kwargs):
+#         return self.partial_update(request, *args, **kwargs)
+
+#     def delete(self, request, *args, **kwargs):
+#         return self.destroy(request, *args, **kwargs)
+
+
+from django.db.models import Sum
+from rest_framework import generics, mixins, filters, status
+from rest_framework.response import Response
+
+class Payements_Offrande_Mixins(
+    generics.GenericAPIView,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin
+):
+    serializer_class = PayementOffrandeSerializer
+    lookup_field = 'pk'
+    pagination_class = Pagination_payement_offrande
+    
+    filter_backends = [filters.SearchFilter]
+
+    search_fields = [
+        'departement',
+        'nom_offrande__nom_offrande',
+        'type_monaie',
+        'montant',
+    ]
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['eglise_id'] = self.kwargs.get('eglise_id')
+        return context
+
+    def get_queryset(self):
+        user = self.request.user
+        pk = self.kwargs.get('pk')
+        eglise_id = self.kwargs.get('eglise_id')
+
+        queryset = Payement_Offrande.objects.select_related('nom_offrande').all()
+
+        if eglise_id:
+            queryset = queryset.filter(
+                nom_offrande__descript_recette__user__eglise_id=eglise_id
+            )
+        elif getattr(user, "is_authenticated", False) and hasattr(user, "eglise") and user.eglise:
+            queryset = queryset.filter(
+                nom_offrande__descript_recette__user__eglise=user.eglise
+            )
+        else:
+            queryset = Payement_Offrande.objects.none()
+
+        if pk:
+            queryset = queryset.filter(pk=pk)
+
+        return queryset.order_by('-date_payement')
+
+    def get(self, request, *args, **kwargs):
+        if 'pk' in kwargs:
+            return self.retrieve(request, *args, **kwargs)
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        type_payement_actuel = request.data.get('type_payement')
+        nom_offrande_id = request.data.get('nom_offrande')
+        montant_actuel = float(request.data.get('montant', 0))
+        type_monaie = request.data.get('type_monaie', 'CDF')
+
+        # Fonction utilitaire interne pour calculer le solde net d'une offrande spécifique
+        def calculer_solde_offrande(offrande_id):
+            t_in = Payement_Offrande.objects.filter(
+                nom_offrande_id=offrande_id, type_payement='in', type_monaie=type_monaie
+            ).aggregate(total=Sum('montant'))['total'] or 0
+            
+            t_out = Payement_Offrande.objects.filter(
+                nom_offrande_id=offrande_id, type_payement='out', type_monaie=type_monaie
+            ).aggregate(total=Sum('montant'))['total'] or 0
+            
+            return float(t_in) - abs(float(t_out))
+
+        # 1. Calcul du solde de l'offrande demandée initialement
+        solde_disponible = calculer_solde_offrande(nom_offrande_id)
+
+        if type_payement_actuel == 'out':
+            if montant_actuel > solde_disponible:
+                
+                # --- CORRECTION ICI : On filtre uniquement sur les nom_offrande qui existent encore réellement ---
+                autres_offrandes_ids = Payement_Offrande.objects.filter(
+                    type_monaie=type_monaie,
+                    nom_offrande__isnull=False # Sécurité contre les clés orphelines
+                ).exclude(
+                    nom_offrande_id=nom_offrande_id
+                ).values_list('nom_offrande_id', flat=True).distinct()
+
+                compte_alternatif_trouve = False
+                cumul_global_autres_soldes = 0.0
+
+                # ÉTAPE B : On cherche une autre offrande suffisante seule
+                for alt_id in autres_offrandes_ids:
+                    solde_alt = calculer_solde_offrande(alt_id)
+                    
+                    if solde_alt > 0:
+                        cumul_global_autres_soldes += solde_alt
+
+                    if solde_alt >= montant_actuel:
+                        # Rendre les données mutables avant modification
+                        if hasattr(request.data, '_mutable'):
+                            request.data._mutable = True
+                        
+                        donnees_modifiees = request.data.copy()
+                        donnees_modifiees['nom_offrande'] = alt_id
+                        
+                        # Tentative de validation stricte pour intercepter une anomalie de clé restante
+                        serializer = self.get_serializer(data=donnees_modifiees)
+                        try:
+                            serializer.is_valid(raise_exception=True)
+                            self.perform_create(serializer)
+                            headers = self.get_success_headers(serializer.data)
+                            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+                        except Exception:
+                            # Si l'ID pose problème (ex: clé inexistante), on passe discrètement à l'alternative suivante
+                            continue
+
+                if not compte_alternatif_trouve:
+                    solde_initial_positif = solde_disponible if solde_disponible > 0 else 0
+                    total_general_cumule = solde_initial_positif + cumul_global_autres_soldes
+
+                    if total_general_cumule >= montant_actuel:
+                        # Le cumul suffit, on laisse passer la création standard
+                        pass
+                    else:
+                        return Response(
+                            {
+                                "error": f"Solde insuffisant. Disponible sur cette offrande: {solde_disponible} {type_monaie.lower()}. "
+                                         f"Le cumul maximal de TOUTES les caisses d'offrandes ({total_general_cumule} {type_monaie.lower()}) "
+                                         f"ne permet pas de couvrir la tentative de sortie de {montant_actuel} {type_monaie.lower()}."
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+        # Création standard si aucune bascule d'ID n'a été nécessaire
+        return self.create(request, *args, **kwargs)
+    
+    def patch(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
+
 # ======================== AHADI =========================
 
 class Ahadi_Mixins(
@@ -1876,3 +2121,24 @@ class RapportPrevisionAPIView(APIView):
             })
 
         return Response({'rapport_prevision': combined_data}, status=status.HTTP_200_OK)
+
+
+
+from django.apps import apps
+from django.http import HttpResponse
+
+def export_database_json(request):
+    try:
+        # Récupère tous les modèles enregistrés dans votre projet
+        all_models = apps.get_models()
+        
+        data = serializers.serialize("json", [obj for model in all_models for obj in model.objects.all()])
+        
+        # Configuration de la réponse HTTP pour le téléchargement du fichier
+        response = HttpResponse(data, content_type="application/json")
+        response['Content-Disposition'] = 'attachment; filename="dump_data_prosphora.json"'
+        
+        return response
+
+    except Exception as e:
+        return HttpResponse(f"Une erreur est survenue lors de l'export : {str(e)}", status=500)

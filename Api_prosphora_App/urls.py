@@ -40,7 +40,7 @@ urlpatterns = [
     path('payement_offrande/<int:eglise_id>/', Payement_Offrande_Mixins.as_view(), name='create-payement_offrande'),
     path('delete_payement_offrande/<int:eglise_id>/<str:pk>/', Payement_Offrande_Mixins.as_view(), name='delete_payement_offrande'),
     path('update_payement_offrande/<int:eglise_id>/<str:pk>/', Payement_Offrande_Mixins.as_view(), name='update_payement_offrande'),
-
+    path('depense/<int:eglise_id>/', Payements_Offrande_Mixins.as_view(), name='liste_payement_offrande_par_eglise'),
 # ============= Groupe Previsions   ====================
     path('groupe_prevision/<int:eglise_id>/', Groupe_Previsions_Mixins.as_view(), name='liste-groupe_prevision'),
     path('delete_groupe_prevision/<int:eglise_id>/<str:pk>/', Groupe_Previsions_Mixins.as_view(), name='delete_groupe_prevision'),
@@ -101,10 +101,6 @@ urlpatterns = [
     path('rapport_prevision/', RapportPrevisionAPIView.as_view(), name='rapport_prevision'),
 
 # =========== Backup Database =========================
-#    # path('backup_database/<int:eglise_id>/', backup_view, name='backup_database'),
-#     path('backup_eglise/<int:eglise_id>/', backup_json_view, name='backup_database_eglise'),
-#     path('export_db_rend/', export_db_render_postgres, name='export_db_render'),
-#     path('test-db/', test_db_connection, name='test_db'),
-#     path('export_backup_json/', export_backup_json, name='export_backup_json')
+    path('export_backup_json/', export_database_json, name='export_backup_json')
 
 ]
