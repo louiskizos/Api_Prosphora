@@ -1698,6 +1698,7 @@ class LivreCaisseAPIView(APIView):
     # permission_classes = [IsAuthenticated]
    # pagination_class = Pagination_livre_caisse
 
+
     def get(self, request, *args, **kwargs):
         user = request.user
         eglise_id = kwargs.get('eglise_id')
@@ -1714,7 +1715,7 @@ class LivreCaisseAPIView(APIView):
             return Response({"error": "Aucune église associée."}, status=400)
 
         
-        data_queryset = queryset.select_related('nom_offrande').order_by('type_monaie', 'date_payement')
+        data_queryset = queryset.select_related('nom_offrande').order_by('type_monaie', '-date_payement')
 
         cumulative_sums = {}
         processed_data = []
