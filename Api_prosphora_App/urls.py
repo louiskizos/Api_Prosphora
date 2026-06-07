@@ -95,6 +95,7 @@ urlpatterns = [
 
 # ============= Livre de caisse =========================
     path('livre_caisse/<int:eglise_id>/', LivreCaisseAPIView.as_view(), name='livre_caisse'),
+    path('livre_caisse_groupe/<int:eglise_id>/', LivreCaisseGroupeAPIView.as_view(), name='livre_caisse_groupe'),
     path('livre_caisse_hebdomadaire/<int:eglise_id>/', LivreCaisseHebdomadaireAPIView.as_view(), name='livre_caisse_hebdomadaire'),
 
 # =========== Rapport Prevision =========================

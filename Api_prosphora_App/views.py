@@ -638,108 +638,6 @@ class Payement_Offrande_Mixins(
         return self.destroy(request, *args, **kwargs)
 
 
-
-# class Payements_Offrande_Mixins(
-#     generics.GenericAPIView,
-#     mixins.CreateModelMixin,
-#     mixins.UpdateModelMixin,
-#     mixins.DestroyModelMixin,
-#     mixins.ListModelMixin,
-#     mixins.RetrieveModelMixin
-# ):
-#     serializer_class = PayementOffrandeSerializer
-#     lookup_field = 'pk'
-#     pagination_class = Pagination_payement_offrande
-    
-#     filter_backends = [filters.SearchFilter]
-
-#     search_fields = [
-#         'departement',
-#         'nom_offrande__nom_offrande',
-#         'type_monaie',
-#         'montant',
-#     ]
-    
-#     def get_serializer_context(self):
-#         context = super().get_serializer_context()
-#         context['eglise_id'] = self.kwargs.get('eglise_id')
-#         return context
-
-#     def get_queryset(self):
-#         user = self.request.user
-#         pk = self.kwargs.get('pk')
-#         eglise_id = self.kwargs.get('eglise_id')
-
-#         queryset = Payement_Offrande.objects.select_related('nom_offrande').all()
-
-#         if eglise_id:
-#             queryset = queryset.filter(
-#                 nom_offrande__descript_recette__user__eglise_id=eglise_id
-#             )
-#         elif getattr(user, "is_authenticated", False) and hasattr(user, "eglise") and user.eglise:
-#             queryset = queryset.filter(
-#                 nom_offrande__descript_recette__user__eglise=user.eglise
-#             )
-#         else:
-#             queryset = Payement_Offrande.objects.none()
-
-#         if pk:
-#             queryset = queryset.filter(pk=pk)
-
-#         return queryset.order_by('-date_payement')
-
-#     def get(self, request, *args, **kwargs):
-#         if 'pk' in kwargs:
-#             return self.retrieve(request, *args, **kwargs)
-#         return self.list(request, *args, **kwargs)
-
-#     def post(self, request, *args, **kwargs):
-#         type_payement_actuel = request.data.get('type_payement')
-#         nom_offrande_id = request.data.get('nom_offrande')
-#         montant_actuel = float(request.data.get('montant', 0))
-#         type_monaie = request.data.get('type_monaie', 'CDF')
-
-#         # 1. Somme de toutes les entrées ('in') historiques
-#         totaux_in = Payement_Offrande.objects.filter(
-#             nom_offrande_id=nom_offrande_id,
-#             type_payement='in',
-#             type_monaie=type_monaie
-#         ).aggregate(total=Sum('montant'))['total'] or 0
-
-#         # 2. Somme de toutes les sorties ('out') historiques déjà effectuées
-#         totaux_out = Payement_Offrande.objects.filter(
-#             nom_offrande_id=nom_offrande_id,
-#             type_payement='out',
-#             type_monaie=type_monaie
-#         ).aggregate(total=Sum('montant'))['total'] or 0
-
-#         # 3. Calcul du solde réel disponible (Entrées - Sorties)
-#         solde_disponible = float(totaux_in) - float(totaux_out)
-
-#         if type_payement_actuel == 'out':
-#             # Validation : la sortie ne peut pas dépasser le solde net restant
-#             if montant_actuel > solde_disponible:
-#                 return Response(
-#                     {
-#                         "error": f"Solde insuffisant. Disponible: {solde_disponible} {type_monaie.lower()}. "
-#                                  f"Tentative de sortie: {montant_actuel} {type_monaie.lower()}."
-#                     },
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#         return self.create(request, *args, **kwargs)
-
-#     def patch(self, request, *args, **kwargs):
-#         return self.partial_update(request, *args, **kwargs)
-
-#     def delete(self, request, *args, **kwargs):
-#         return self.destroy(request, *args, **kwargs)
-
-
-from django.db.models import Sum
-from rest_framework import generics, mixins, filters, status
-from rest_framework.response import Response
-
 class Payements_Offrande_Mixins(
     generics.GenericAPIView,
     mixins.CreateModelMixin,
@@ -1891,51 +1789,6 @@ class BilanAPIView(APIView):
 # =================== Rapport livre de caisse =======================================
 
 
-# class LivreCaisseAPIView(APIView):
-
-#     #permission_classes = [IsAuthenticated]  
-
-#     # pagination_class = Pagination_livre_caisse
-
-#     def get(self, request, *args, **kwargs):
-#         user = request.user
-#         eglise_id = kwargs.get('eglise_id')
-
-      
-#         if eglise_id:
-#             data_queryset = Payement_Offrande.objects.filter(
-#                 nom_offrande__descript_recette__user__eglise_id=eglise_id
-#             ).order_by('type_monaie', 'date_payement')
-#         elif hasattr(user, "eglise") and user.eglise:
-#             data_queryset = Payement_Offrande.objects.filter(
-#                 nom_offrande__descript_recette__user__eglise=user.eglise
-#             ).order_by('type_monaie', 'date_payement')
-#         else:
-#             return Response({"error": "Aucune église associée à l’utilisateur."}, status=400)
-
-        
-#         cumulative_sums_by_currency = {}
-#         processed_data = []
-
-#         for item in data_queryset:
-#             monnaie = item.type_monaie
-#             montant = item.montant or 0
-#             cumulative_sums_by_currency[monnaie] = cumulative_sums_by_currency.get(monnaie, 0)
-#             cumulative_sums_by_currency[monnaie] += montant if item.type_payement != 'out' else -montant
-
-#             processed_data.append({
-#                 'id': item.id,
-#                 'date_payement': item.date_payement,
-#                 'nom_offrande': str(item.nom_offrande),
-#                 'num_compte': str(item.nom_offrande.num_compte),
-#                 'type_payement': item.type_payement,
-#                 'motif': item.motif,
-#                 'type_monaie': monnaie,
-#                 'montant': montant,
-#                 'cumulative_sum': cumulative_sums_by_currency[monnaie],
-#             })
-
-#         return Response({'livre_caisse': processed_data}, status=200)
 
 
 class LivreCaisseAPIView(APIView):
@@ -2003,7 +1856,204 @@ class LivreCaisseAPIView(APIView):
 
         return Response({'results': processed_data}, status=200)
 
+from datetime import datetime
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
+class LivreCaisseAPIView(APIView):
+
+    # permission_classes = [IsAuthenticated]
+    # pagination_class = Pagination_livre_caisse
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        eglise_id = kwargs.get('eglise_id')
+
+        # 1. Extraction et détection de la période cible (Recherche ou En cours)
+        mois_recherche = request.query_params.get('date_payement') # Attend "2026-06" ou "2026-06-05"
+
+        if mois_recherche:
+            # Si le frontend envoie "2026-06-05", on découpe pour obtenir "2026-06"
+            periode_cible = mois_recherche[:7]
+        else:
+            # Par défaut, mois et année en cours (ex: "2026-06")
+            periode_cible = datetime.now().strftime('%Y-%m')
+
+        # Séparation de l'année et du mois pour le filtre Django
+        annee, mois = periode_cible.split('-')
+
+        # 2. Construction du QuerySet de base selon l'église
+        if eglise_id:
+            queryset = Payement_Offrande.objects.filter(
+                nom_offrande__descript_recette__user__eglise_id=eglise_id
+            )
+        elif hasattr(user, "eglise") and user.eglise:
+            queryset = Payement_Offrande.objects.filter(
+                nom_offrande__descript_recette__user__eglise=user.eglise
+            )
+        else:
+            return Response({"error": "Aucune église associée."}, status=400)
+
+        # 3. Application du filtre de recherche (Mois et Année de la période cible)
+        queryset = queryset.filter(
+            date_payement__year=annee,
+            date_payement__month=mois
+        )
+
+        # Récupération des données triées
+        data_queryset = queryset.select_related('nom_offrande').order_by('type_monaie', '-date_payement')
+
+        cumulative_sums = {}
+        grouped_data = {}  # Pour structurer le résultat final par devise : {"USD": [...], "CDF": [...]}
+
+        # 4. Traitement des données et calcul du cumul pour cette période
+        for item in data_queryset:
+            monnaie = item.type_monaie or "USD"
+            montant = float(item.montant or 0)
+            
+            if monnaie not in cumulative_sums:
+                cumulative_sums[monnaie] = 0.0
+                grouped_data[monnaie] = [] # Initialisation de la liste pour cette devise
+            
+            if item.type_payement != 'out':
+                cumulative_sums[monnaie] += montant
+            else:
+                cumulative_sums[monnaie] -= montant
+
+            num_c = "N/A"
+            if item.nom_offrande:
+                num_c = str(getattr(item.nom_offrande, 'num_compte', 'N/A'))
+
+            grouped_data[monnaie].append({
+                'id': item.id,
+                'date_payement': item.date_payement,
+                'nom_offrande': str(item.nom_offrande) if item.nom_offrande else "Inconnu",
+                'num_compte': num_c,
+                'type_payement': item.type_payement,
+                'motif': item.motif or "",
+                'type_monaie': monnaie,
+                'montant': montant,
+                'cumulative_sum': cumulative_sums[monnaie],
+            })
+
+        # paginator = self.pagination_class()
+        # page = paginator.paginate_queryset(processed_data, request, view=self)
+        
+        # if page is not None:
+        #     return paginator.get_paginated_response(page)
+
+        return Response({
+            'periode_affichee': periode_cible,
+            'results': grouped_data
+        }, status=200)
+        
+
+from datetime import datetime
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
+class LivreCaisseGroupeAPIView(APIView):
+
+    # permission_classes = [IsAuthenticated]
+    # pagination_class = Pagination_livre_caisse
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        eglise_id = kwargs.get('eglise_id')
+
+        # 1. Extraction de la période cible initiale
+        mois_recherche = request.query_params.get('date_payement') 
+        if mois_recherche:
+            periode_cible = mois_recherche[:7]
+        else:
+            periode_cible = datetime.now().strftime('%Y-%m')
+
+        monnaie_recherche = request.query_params.get('type_monaie')
+
+        # 2. Construction du QuerySet de base selon l'église
+        if eglise_id:
+            base_queryset = Payement_Offrande.objects.filter(
+                nom_offrande__descript_recette__user__eglise_id=eglise_id
+            )
+        elif hasattr(user, "eglise") and user.eglise:
+            base_queryset = Payement_Offrande.objects.filter(
+                nom_offrande__descript_recette__user__eglise=user.eglise
+            )
+        else:
+            return Response({"error": "Aucune église associée."}, status=400)
+
+        # Fonction réutilisable pour filtrer, calculer le cumul et grouper
+        def generer_livre_caisse(periode):
+            annee, mois = periode.split('-')
+            
+            queryset = base_queryset.filter(
+                date_payement__year=annee,
+                date_payement__month=mois
+            )
+            if monnaie_recherche:
+                queryset = queryset.filter(type_monaie__iexact=monnaie_recherche)
+
+            data_queryset = queryset.select_related('nom_offrande').order_by('type_monaie', '-date_payement')
+
+            cumulative_sums = {}
+            grouped_data = {}  
+
+            for item in data_queryset:
+                monnaie = item.type_monaie or "USD"
+                montant = float(item.montant or 0)
+                
+                if monnaie not in cumulative_sums:
+                    cumulative_sums[monnaie] = 0.0
+                    grouped_data[monnaie] = [] 
+                
+                if item.type_payement != 'out':
+                    cumulative_sums[monnaie] += montant
+                else:
+                    cumulative_sums[monnaie] -= montant
+
+                num_c = "N/A"
+                if item.nom_offrande:
+                    num_c = str(getattr(item.nom_offrande, 'num_compte', 'N/A'))
+
+                grouped_data[monnaie].append({
+                    'id': item.id,
+                    'date_payement': item.date_payement,
+                    'nom_offrande': str(item.nom_offrande) if item.nom_offrande else "Inconnu",
+                    'num_compte': num_c,
+                    'type_payement': item.type_payement,
+                    'motif': item.motif or "",
+                    'type_monaie': monnaie,
+                    'montant': montant,
+                    'cumulative_sum': cumulative_sums[monnaie],
+                })
+            
+            return grouped_data
+
+        # 3. Premier essai avec la période demandée
+        resultat_final = generer_livre_caisse(periode_cible)
+
+        # 4. --- LOGIQUE DE SECOURS SI LE RÉSULTAT EST VIDE ---
+        if not resultat_final:
+            # On cherche l'enregistrement le plus récent disponible dans toute l'histoire de cette église
+            dernier_enregistrement = base_queryset.order_by('-date_payement').first()
+            
+            if dernier_enregistrement and dernier_enregistrement.date_payement:
+                # On extrait sa période (ex: "2026-04")
+                periode_cible = dernier_enregistrement.date_payement.strftime('%Y-%m')
+                # On recalcule le livre de caisse pour cette période précédente qui contient des données
+                resultat_final = generer_livre_caisse(periode_cible)
+
+        # paginator = self.pagination_class()
+        # page = paginator.paginate_queryset(processed_data, request, view=self)
+        
+        # if page is not None:
+        #     return paginator.get_paginated_response(page)
+
+        return Response({
+            'periode_affichee': periode_cible,
+            'monnaie_filtree': monnaie_recherche.upper() if monnaie_recherche else "TOUTES",
+            'results': resultat_final
+        }, status=200)
 
 class LivreCaisseHebdomadaireAPIView(APIView):
 
