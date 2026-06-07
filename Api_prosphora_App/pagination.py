@@ -19,7 +19,7 @@ class Pagination_ahadi(BaseCustomPagination):
     page_size = 13
 
 class Pagination_etat_besoin(BaseCustomPagination):
-    page_size = 13
+    page_size = 16
 
 
 class Pagination_livre_caisse(BaseCustomPagination):
